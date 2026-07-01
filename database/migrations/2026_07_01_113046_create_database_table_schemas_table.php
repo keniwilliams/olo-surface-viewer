@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -16,10 +15,10 @@ return new class extends Migration
             $table->string('table_name');
             $table->string('table_type')->nullable();
             $table->unsignedBigInteger('row_count')->nullable();
-            $table->jsonb('columns')->default(new Expression("'[]'::jsonb"));
-            $table->jsonb('primary_keys')->default(new Expression("'[]'::jsonb"));
-            $table->jsonb('foreign_keys')->default(new Expression("'[]'::jsonb"));
-            $table->jsonb('indexes')->default(new Expression("'[]'::jsonb"));
+            $table->jsonb('columns');
+            $table->jsonb('primary_keys');
+            $table->jsonb('foreign_keys');
+            $table->jsonb('indexes');
             $table->timestampsTz();
 
             $table->index(['schema_name', 'table_name']);

@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::statement('alter table database_connections alter column host drop not null');
         DB::statement('alter table database_connections alter column port drop not null');
         DB::statement('alter table database_connections alter column database drop not null');
@@ -15,6 +19,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::statement('alter table database_connections alter column host set not null');
         DB::statement('alter table database_connections alter column port set not null');
         DB::statement('alter table database_connections alter column database set not null');
