@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('database_connections', function (Blueprint $table) {
+        Schema::create('database_connections', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
             $table->string('connection_key')->unique();
-            $table->string('host')->default('127.0.0.1');
-            $table->unsignedInteger('port');
-            $table->string('database');
-            $table->string('username');
+            $table->string('host')->nullable();
+            $table->unsignedInteger('port')->nullable();
+            $table->string('database')->nullable();
+            $table->string('username')->nullable();
             $table->text('description')->nullable();
             $table->boolean('is_enabled')->default(true);
             $table->timestamps();
