@@ -42,6 +42,8 @@ class PullDatabaseSchemas extends Command
 
             try {
                 $result = $inspector->inspect($connection->connection_key);
+                $tableCount = count($result['tables']);
+                $columnCount = collect($result['tables'])->sum(fn (array $table): int => count($table['columns']));
 
                 foreach ($result['tables'] as $table) {
                     $snapshot->tables()->create([
@@ -59,11 +61,11 @@ class PullDatabaseSchemas extends Command
                 $snapshot->update([
                     'status' => 'completed',
                     'schema_count' => count($result['schemas']),
-                    'table_count' => count($result['tables']),
-                    'column_count' => collect($result['tables'])->sum(fn (array $table): int => count($table['columns'])),
+                    'table_count' => $tableCount,
+                    'column_count' => $columnCount,
                 ]);
 
-                $this->info("Captured {$snapshot->table_count} tables for [{$connection->connection_key}].");
+                $this->info("Captured {$tableCount} tables for [{$connection->connection_key}].");
             } catch (Throwable $exception) {
                 $snapshot->update([
                     'status' => 'failed',

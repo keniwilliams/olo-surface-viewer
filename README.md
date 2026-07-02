@@ -171,6 +171,20 @@ Pull schema metadata for one observed database:
 php artisan olo:database-schemas:pull surface_viewer
 ```
 
+Listen for Bloodstream Observer changed pings:
+
+```powershell
+php artisan olo:bloodstream-observer:listen
+```
+
+The listener subscribes to one NATS subject only:
+
+```
+olo.bloodstream.observer.changed.v1
+```
+
+The NATS message is a ping/dirty signal, not display data. Surface Viewer refresh hooks should read current observer memory from the Bloodstream database through the read-only Laravel models and JSON APIs.
+
 ## Registry Sync Behaviour
 
 The registry sync command creates or updates rows in:
