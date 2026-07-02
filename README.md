@@ -183,7 +183,7 @@ The listener subscribes to one NATS subject only:
 olo.bloodstream.observer.changed.v1
 ```
 
-The NATS message is a ping/dirty signal, not display data. Surface Viewer refresh hooks should read current observer memory from the Bloodstream database through the read-only Laravel models and JSON APIs.
+The NATS message is a ping/dirty signal, not display data. Its body carries only a small metadata contract — `owner`, `event`, `publisher`, `published_at`, `emitted_at` — which the listener parses onto the dispatched `BloodstreamObserverChanged` event for logging/diagnostics only; it is never stored and never used as display data. Surface Viewer refresh hooks should read current observer memory from the Bloodstream database through the read-only Laravel models and JSON APIs.
 
 ## Registry Sync Behaviour
 
@@ -215,7 +215,7 @@ database_table_schemas
 
 The snapshot tables use soft references rather than database-enforced foreign keys.
 
-The oreign_keys field in table schema metadata describes observed foreign keys from inspected databases. It does not create foreign key constraints inside Surface Viewer.
+The Foreign_keys field in table schema metadata describes observed foreign keys from inspected databases. It does not create foreign key constraints inside Surface Viewer.
 
 ## Current Filament Pages
 
