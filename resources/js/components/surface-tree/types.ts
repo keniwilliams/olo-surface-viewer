@@ -18,3 +18,9 @@ export type SurfaceMainContentState = {
     impression_id?: string | null;
     payload?: Record<string, unknown>;
 };
+
+export type CachedSurfaceTreeChildren = {
+    cachedAt: string;
+    expiresAt: string;
+    children: SurfaceTreeNode[];
+};

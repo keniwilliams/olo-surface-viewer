@@ -21,14 +21,17 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringNotContainsString('resources/js/surface-tree.ts', $view);
     }
 
-    public function test_surface_tree_component_includes_static_impression_children(): void
+    public function test_surface_tree_component_fetches_roots_and_lazy_loads_children(): void
     {
         $component = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
 
-        $this->assertStringContainsString('impression:filesystem:first', $component);
-        $this->assertStringContainsString('impression:email:first', $component);
-        $this->assertStringContainsString('impression:dreamstate:first', $component);
-        $this->assertStringContainsString('impression:camera_lens:first', $component);
+        $this->assertStringContainsString("const depthWindow = 3;", $component);
+        $this->assertStringContainsString("const rootsUrl = '/surface-tree/nodes';", $component);
+        $this->assertStringContainsString('onMounted(() => {', $component);
+        $this->assertStringContainsString('fetchRoots();', $component);
+        $this->assertStringContainsString('loadChildren(node)', $component);
+        $this->assertStringContainsString('fetchSurfaceTreeJson(childrenUrl(node.key))', $component);
+        $this->assertStringNotContainsString('impression:filesystem:first', $component);
     }
 
     public function test_surface_tree_keeps_navigation_and_main_content_components_separate(): void
@@ -78,6 +81,33 @@ class SurfaceTreePageTest extends TestCase
         }
     }
 
+    public function test_surface_tree_component_uses_local_storage_child_cache_and_ttls(): void
+    {
+        $component = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
+        $types = File::get(resource_path('js/components/surface-tree/types.ts'));
+
+        $this->assertStringContainsString('CachedSurfaceTreeChildren', $types);
+        $this->assertStringContainsString('localStorage.getItem(cacheKey(node.key))', $component);
+        $this->assertStringContainsString('localStorage.setItem(cacheKey(node.key), JSON.stringify(payload));', $component);
+        $this->assertStringContainsString('new Date(payload.expiresAt) <= new Date()', $component);
+        $this->assertStringContainsString('localStorage.removeItem(cacheKey(node.key));', $component);
+        $this->assertStringContainsString('surface-tree:${nodeKey}:depth:${depthWindow}:v1', $component);
+        $this->assertStringContainsString('filesystem: 5 * 60 * 1000', $component);
+        $this->assertStringContainsString('email: 2 * 60 * 1000', $component);
+        $this->assertStringContainsString('dreamstate: 60 * 1000', $component);
+        $this->assertStringContainsString('camera_lens: 60 * 1000', $component);
+    }
+
+    public function test_surface_tree_node_renders_lazy_loading_error_and_load_deeper_states(): void
+    {
+        $treeNode = File::get(resource_path('js/components/surface-tree/SurfaceTreeNode.vue'));
+
+        $this->assertStringContainsString('Loading...', $treeNode);
+        $this->assertStringContainsString('role="alert"', $treeNode);
+        $this->assertStringContainsString('Load deeper', $treeNode);
+        $this->assertStringContainsString("emit('load-deeper', node)", $treeNode);
+    }
+
     public function test_surface_tree_css_is_minimal_and_scoped(): void
     {
         $appCss = File::get(resource_path('css/app.css'));
@@ -91,12 +121,13 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringNotContainsString('@apply', $surfaceTreeCss);
     }
 
-    public function test_surface_tree_does_not_add_database_traversal(): void
+    public function test_surface_tree_does_not_add_client_database_traversal_or_state_library(): void
     {
         $component = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
 
-        $this->assertStringNotContainsString('fetch(', $component);
         $this->assertStringNotContainsString('axios', $component);
+        $this->assertStringNotContainsString('pinia', $component);
+        $this->assertStringNotContainsString('vuex', $component);
     }
 
     public function test_filament_surface_viewer_page_renders_surface_tree_mount_target(): void
