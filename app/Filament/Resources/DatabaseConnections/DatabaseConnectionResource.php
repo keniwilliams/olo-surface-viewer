@@ -48,6 +48,7 @@ class DatabaseConnectionResource extends Resource
             'index' => Pages\ListDatabaseConnections::route('/'),
             'create' => Pages\CreateDatabaseConnection::route('/create'),
 
+            'databases.cockpit' => Pages\Databases\Cockpit::route('/databases/cockpit'),
             'databases.overview' => Pages\Databases\Overview::route('/databases/overview'),
             'databases.surface-viewer' => Pages\Databases\SurfaceViewer::route('/databases/surface-viewer'),
             'databases.bloodstream' => Pages\Databases\Bloodstream::route('/databases/bloodstream'),
@@ -60,5 +61,3 @@ class DatabaseConnectionResource extends Resource
         ];
     }
 }
-
-
