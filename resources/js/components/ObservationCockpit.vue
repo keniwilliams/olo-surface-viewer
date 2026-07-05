@@ -33,7 +33,7 @@
                     <div>
                         <h2>{{ organ.label }}</h2>
                         <p>{{ organ.key }}</p>
-                        <p>{{ organ.source }}</p>
+                        <code class="text-sm fi-badge font-mono px-1.5 py-0.5 rounded">{{ organ.source }}</code>
                     </div>
                     <span class="olo-status-pill" :data-status="organ.read_status">
                         {{ organ.read_status }}
@@ -102,14 +102,14 @@
                             <dd>{{ formatValue(activity.activity_timestamp) }}</dd>
                         </div>
                         <div>
-                            <dt>source</dt>
-                            <dd>{{ activity.source_reference }}</dd>
-                        </div>
-                        <div>
                             <dt>organ</dt>
-                            <dd>{{ activity.source_organ_key }}</dd>
+                            <dd><code class="text-sm fi-badge font-mono px-1.5 py-0.5 rounded">{{ activity.source_organ_key }}</code></dd>
                         </div>
+
                     </dl>
+                    <div class="text-sm fi-badge font-mono px-1.5 py-0.5 rounded">
+                        <code>{{ activity.source_reference }}</code>
+                    </div>
                     <p v-if="activity.error" class="olo-feed-item__error">{{ activity.error }}</p>
                 </li>
             </ol>
