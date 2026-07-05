@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import ObservationCockpit from './components/ObservationCockpit.vue';
+import SurfaceTreeBrowser from './components/surface-tree/SurfaceTreeBrowser.vue';
 
 const desktopSidebarBreakpoint = 1024;
 
@@ -40,6 +41,18 @@ const mountObservationCockpit = () => {
     }).mount(cockpit);
 };
 
+const mountSurfaceTreeBrowser = () => {
+    const surfaceTree = document.getElementById('surface-tree-browser');
+
+    if (!surfaceTree || surfaceTree.__oloSurfaceTreeMounted) {
+        return;
+    }
+
+    surfaceTree.__oloSurfaceTreeMounted = true;
+
+    createApp(SurfaceTreeBrowser).mount(surfaceTree);
+};
+
 const scheduleFilamentSidebarDefaults = () => {
     requestAnimationFrame(configureFilamentSidebarDefaults);
 };
@@ -47,6 +60,7 @@ const scheduleFilamentSidebarDefaults = () => {
 const initializeApp = () => {
     scheduleFilamentSidebarDefaults();
     mountObservationCockpit();
+    mountSurfaceTreeBrowser();
 };
 
 document.addEventListener('alpine:init', scheduleFilamentSidebarDefaults);
