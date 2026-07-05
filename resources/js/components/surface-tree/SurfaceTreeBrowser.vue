@@ -1,21 +1,25 @@
 <template>
-    <section aria-label="Surface tree browser">
-        <aside aria-label="Surface tree navigation">
-            <ol>
-                <SurfaceTreeNode
-                    v-for="node in rootNodes"
-                    :key="node.key"
-                    :node="node"
-                    :children-by-key="childrenByKey"
-                    :expanded-node-keys="expandedNodeKeys"
-                    :selected-node-key="selectedNodeKey"
-                    @toggle="toggleNode"
-                    @select="selectNode"
-                />
-            </ol>
-        </aside>
+    <section class="surface-tree" aria-label="Surface tree browser">
+        <div class="surface-tree__layout">
+            <aside class="surface-tree__nav" aria-label="Surface tree navigation">
+                <ol>
+                    <SurfaceTreeNode
+                        v-for="node in rootNodes"
+                        :key="node.key"
+                        :node="node"
+                        :children-by-key="childrenByKey"
+                        :expanded-node-keys="expandedNodeKeys"
+                        :selected-node-key="selectedNodeKey"
+                        @toggle="toggleNode"
+                        @select="selectNode"
+                    />
+                </ol>
+            </aside>
 
-        <SurfaceTreeMainContentHost :state="mainContentState" />
+            <div class="surface-tree__main">
+                <SurfaceTreeMainContentHost :state="mainContentState" />
+            </div>
+        </div>
     </section>
 </template>
 

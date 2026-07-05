@@ -1,8 +1,9 @@
 <template>
-    <li>
-        <div>
+    <li class="surface-tree__node">
+        <div class="surface-tree__row">
             <button
                 v-if="node.has_children"
+                class="surface-tree__toggle"
                 type="button"
                 :aria-expanded="expanded"
                 :aria-controls="childrenId"
@@ -10,23 +11,24 @@
             >
                 {{ expanded ? 'v' : '>' }}
             </button>
-            <span v-else aria-hidden="true"></span>
+            <span v-else class="surface-tree__toggle-placeholder" aria-hidden="true"></span>
 
             <button
+                class="surface-tree__label"
                 type="button"
                 :aria-current="selected ? 'true' : undefined"
                 @click="emit('select', node)"
             >
                 <span>{{ node.label }}</span>
-                <small>{{ node.type }}</small>
+                <small class="surface-tree__badge">{{ node.type }}</small>
             </button>
         </div>
 
-        <p v-if="expanded && node.has_children && childNodes.length === 0" :id="childrenId">
+        <p v-if="expanded && node.has_children && childNodes.length === 0" :id="childrenId" class="surface-tree__muted">
             No children loaded.
         </p>
 
-        <ol v-else-if="expanded && childNodes.length > 0" :id="childrenId">
+        <ol v-else-if="expanded && childNodes.length > 0" :id="childrenId" class="surface-tree__children">
             <SurfaceTreeNode
                 v-for="childNode in childNodes"
                 :key="childNode.key"
