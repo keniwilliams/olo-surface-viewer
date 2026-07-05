@@ -16,6 +16,7 @@ class SurfaceTreePageTest extends TestCase
         $view = File::get(resource_path('views/surface-tree/index.blade.php'));
 
         $this->assertStringContainsString('<x-filament-panels::page>', $view);
+        $this->assertStringContainsString("@vite('resources/css/surface-tree.css')", $view);
         $this->assertStringContainsString('surface-tree-browser', $view);
         $this->assertStringNotContainsString('<!DOCTYPE html>', $view);
         $this->assertStringNotContainsString('resources/js/surface-tree.ts', $view);
@@ -112,13 +113,29 @@ class SurfaceTreePageTest extends TestCase
     {
         $appCss = File::get(resource_path('css/app.css'));
         $surfaceTreeCss = File::get(resource_path('css/surface-tree.css'));
+        $viteConfig = File::get(base_path('vite.config.js'));
 
-        $this->assertStringContainsString("@import './surface-tree.css';", $appCss);
-        $this->assertStringContainsString('.surface-tree__layout', $surfaceTreeCss);
+        $this->assertStringNotContainsString('surface-tree.css', $appCss);
+        $this->assertStringContainsString('resources/css/surface-tree.css', $viteConfig);
+        $this->assertStringContainsString('.surface-tree .surface-tree__layout', $surfaceTreeCss);
         $this->assertStringContainsString('grid-template-columns: minmax(280px, 420px) 1fr;', $surfaceTreeCss);
         $this->assertStringNotContainsString('linear-gradient', $surfaceTreeCss);
         $this->assertStringNotContainsString('box-shadow', $surfaceTreeCss);
         $this->assertStringNotContainsString('@apply', $surfaceTreeCss);
+        $this->assertStringNotContainsString('animation', $surfaceTreeCss);
+        $this->assertStringNotContainsString('gradient', $surfaceTreeCss);
+        $this->assertStringNotContainsString('shadow', $surfaceTreeCss);
+    }
+
+    public function test_surface_tree_css_is_loaded_only_from_surface_tree_blade_wrappers(): void
+    {
+        $surfaceViewer = File::get(resource_path('views/filament/resources/database-connections/pages/databases/surface-viewer.blade.php'));
+        $surfaceTree = File::get(resource_path('views/surface-tree/index.blade.php'));
+        $welcome = File::get(resource_path('views/welcome.blade.php'));
+
+        $this->assertStringContainsString("@vite('resources/css/surface-tree.css')", $surfaceViewer);
+        $this->assertStringContainsString("@vite('resources/css/surface-tree.css')", $surfaceTree);
+        $this->assertStringNotContainsString('resources/css/surface-tree.css', $welcome);
     }
 
     public function test_surface_tree_does_not_add_client_database_traversal_or_state_library(): void
