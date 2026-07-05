@@ -1,3 +1,3 @@
 <x-filament-panels::page>
-    {{-- Page content --}}
+    <div id="surface-tree-browser"></div>
 </x-filament-panels::page>
