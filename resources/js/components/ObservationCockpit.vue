@@ -4,7 +4,7 @@
             <button
                 v-for="organ in orderedOrgans"
                 :key="organ.key"
-                class="olo-organ-button p-3 wy-3"
+                class="olo-organ-button p-3 pb-6"
                 :class="{ 'olo-organ-button--hidden': !organ.visible }"
                 type="button"
                 draggable="true"
@@ -16,7 +16,6 @@
             >
                 <span class="olo-organ-button__drag block" aria-hidden="true">::</span>
                 <span class="olo-organ-button__label block">{{ organ.label }}</span>
-                <span class="olo-organ-button__state block">{{ organ.visible ? 'showing' : 'hidden' }}</span>
             </button>
         </div>
 
@@ -34,6 +33,7 @@
                     <div>
                         <h2>{{ organ.label }}</h2>
                         <p>{{ organ.key }}</p>
+                        <p>{{ organ.source }}</p>
                     </div>
                     <span class="olo-status-pill" :data-status="organ.read_status">
                         {{ organ.read_status }}
@@ -52,10 +52,6 @@
                     <div>
                         <dt>staleness</dt>
                         <dd>{{ organ.staleness_state }}</dd>
-                    </div>
-                    <div>
-                        <dt>source</dt>
-                        <dd>{{ organ.source }}</dd>
                     </div>
                     <div>
                         <dt>visible</dt>
@@ -269,7 +265,14 @@ function dropOn(targetKey) {
 }
 
 function formatValue(value) {
-    return value || 'unknown';
+    if (!value) {
+        return 'unknown'
+      }
+
+    return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    }).format(new Date(value))
 }
 
 function activityKey(activity) {
