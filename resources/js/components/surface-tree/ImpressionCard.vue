@@ -1,11 +1,11 @@
 <template>
-    <article aria-label="Impression card">
-        <h2>{{ displayValue(label, 'Untitled impression') }}</h2>
+    <article class="surface-tree__card" aria-label="Impression card">
+        <h2 class="surface-tree__card-title">{{ displayValue(label, 'Untitled impression') }}</h2>
 
-        <dl>
-            <div v-for="field in visibleFields" :key="field.label">
-                <dt>{{ field.label }}</dt>
-                <dd>{{ field.value }}</dd>
+        <dl class="surface-tree__details">
+            <div v-for="field in visibleFields" :key="field.label" class="surface-tree__detail-row">
+                <dt class="surface-tree__detail-label">{{ field.label }}</dt>
+                <dd class="surface-tree__detail-value">{{ field.value }}</dd>
             </div>
         </dl>
 

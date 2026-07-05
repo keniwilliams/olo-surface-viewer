@@ -1,5 +1,6 @@
 @import '/vendor/filament/filament/resources/css/theme.css';
 @import 'tailwindcss';
+@import './surface-tree.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../app/Filament/**/*.php';
