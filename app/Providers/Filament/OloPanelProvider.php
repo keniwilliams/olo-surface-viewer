@@ -11,12 +11,15 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -31,6 +34,12 @@ class OloPanelProvider extends PanelProvider
             ->path('olo')
             ->login()
             ->viteTheme('resources/css/app.css')
+            ->sidebarFullyCollapsibleOnDesktop()
+            ->maxContentWidth(Width::Full)
+            ->renderHook(
+                PanelsRenderHook::SCRIPTS_AFTER,
+                fn (): string => app(Vite::class)(['resources/js/app.js'])->toHtml(),
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])

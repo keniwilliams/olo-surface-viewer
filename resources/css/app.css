@@ -12,6 +12,39 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+@media (min-width: 1024px) {
+    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-layout {
+        display: grid;
+        grid-template-columns: 0rem minmax(0, 1fr);
+        transition: grid-template-columns 200ms ease;
+    }
+
+    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation)
+        .fi-layout:has(.fi-main-sidebar.fi-sidebar-open) {
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    }
+
+    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-main-sidebar {
+        position: sticky;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        transform: translateX(0);
+    }
+
+    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop.fi-body-has-topbar:not(.fi-body-has-top-navigation)
+        .fi-main-sidebar {
+        top: 4rem;
+        height: calc(100dvh - 4rem);
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-layout {
+        transition: none;
+    }
+}
+
 .olo-cockpit {
     gap: 1rem;
     &__toolbar {
@@ -60,7 +93,7 @@
 
 .olo-cockpit__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr));
     gap: 0.75rem;
     margin-top: 1rem;
 }
