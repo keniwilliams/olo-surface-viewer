@@ -6,15 +6,20 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -28,6 +33,13 @@ class OloPanelProvider extends PanelProvider
             ->id('olo')
             ->path('olo')
             ->login()
+            ->viteTheme('resources/css/app.css')
+            ->sidebarFullyCollapsibleOnDesktop()
+            ->maxContentWidth(Width::Full)
+            ->renderHook(
+                PanelsRenderHook::SCRIPTS_AFTER,
+                fn (): string => app(Vite::class)(['resources/js/app.js'])->toHtml(),
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -35,6 +47,13 @@ class OloPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
+            ])
+            ->navigationItems([
+                NavigationItem::make('Observation Cockpit')
+                    ->icon(Heroicon::OutlinedPresentationChartLine)
+                    ->url(fn (): string => route('filament.olo.resources.database-connections.databases.cockpit'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs('filament.olo.resources.database-connections.databases.cockpit'))
+                    ->sort(1),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

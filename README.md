@@ -1,20 +1,27 @@
 # OLO Surface Viewer
 
-OLO Surface Viewer is a local/internal Laravel + Filament application for observing OLO-owned databases.
+![CI](https://github.com/keniwilliams/olo-surface-viewer/actions/workflows/ci.yml/badge.svg)
+![PHPStan](https://img.shields.io/badge/PHPStan-Larastan%20level%205-blueviolet)
+![Laravel](https://img.shields.io/badge/Laravel-13.x-red)
 
-Its job is to give a readable surface over database visibility, observed database registry state, and captured schema metadata without taking ownership of the organ databases themselves.
+OLO Surface Viewer is a Laravel + Filament application for inspecting database visibility, schema snapshots, and observer-facing runtime metadata across a distributed local system.
+
+It solves a practical engineering problem: instead of checking several databases, command outputs, logs, and service-specific tools separately, Surface Viewer gives one read-only place to inspect what the system can currently see.
+
+This repository is a portfolio-facing slice of a larger OLO system. The focus is not a finished product UI; it is the engineering boundary around safe observation: explicit database registration, schema capture, local snapshot storage, read-only access, and a foundation for rendering domain-specific surfaces.
 
 ## Current Purpose
 
-Surface Viewer currently provides the foundation for:
+Surface Viewer currently provides:
 
-- registering known observed OLO database connections
-- syncing configured observed database connections into a local registry
-- pulling schema metadata from enabled observed databases
-- storing schema snapshots locally inside the Surface Viewer database
-- preparing for a future schema viewer UI
+- read-only registration of known observed database connections
+- syncing configured database connections into a local registry
+- schema metadata capture from enabled observed databases
+- local storage of schema snapshots inside the Surface Viewer database
+- Filament pages for database-specific visibility
+- a safe foundation for richer schema viewing
 
-It is not yet intended to be a production multi-tenant database discovery service.
+It is not intended to mutate external system databases or act as a production multi-tenant database discovery service.
 
 ## Architecture Position
 
