@@ -5,6 +5,7 @@
 namespace App\Support\Bloodstream;
 
 use App\Events\Bloodstream\BloodstreamObserverChanged;
+use App\Services\Bloodstream\BloodstreamObserverPanelState;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Events\Dispatcher;
 use LaravelNats\Subscriber\InboundMessage;
@@ -14,6 +15,7 @@ class BloodstreamObserverChangedPingHandler
 {
     public function __construct(
         private readonly Dispatcher $events,
+        private readonly BloodstreamObserverPanelState $panelState,
     ) {}
 
     /**
@@ -28,7 +30,7 @@ class BloodstreamObserverChangedPingHandler
     {
         $ping = $message->decodedJson();
 
-        $this->events->dispatch(new BloodstreamObserverChanged(
+        $event = new BloodstreamObserverChanged(
             subject: $message->subject,
             receivedAt: CarbonImmutable::now(),
             owner: $this->stringOrNull($ping, 'owner'),
@@ -36,7 +38,10 @@ class BloodstreamObserverChangedPingHandler
             publisher: $this->stringOrNull($ping, 'publisher'),
             publishedAt: $this->timestampOrNull($ping, 'published_at'),
             emittedAt: $this->timestampOrNull($ping, 'emitted_at'),
-        ));
+        );
+
+        $this->events->dispatch($event);
+        $this->panelState->recordChangedPing($event);
     }
 
     /**
