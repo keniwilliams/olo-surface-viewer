@@ -81,6 +81,7 @@ watch(
 
 async function fetchCorpus(id: string) {
     isLoadingCorpus.value = true;
+    corpusError.value = null;
 
     try {
         const response = await fetch(`/surface-tree/impressions/${encodeURIComponent(id)}/corpus`, {
@@ -90,10 +91,19 @@ async function fetchCorpus(id: string) {
         });
 
         if (!response.ok) {
-            throw new Error(`Request failed: ${response.status}`);
+            if (asString(impressionId.value) === id) {
+                corpusError.value = `Request failed: ${response.status}`;
+            }
+
+            return;
         }
 
-        const payload = (await response.json()) as { data?: { impression_id?: string; raw_corpus?: string | null } };
+        const payload = (await response.json()) as {
+            data?: {
+                impression_id?: string;
+                raw_corpus?: string | null;
+            };
+        };
 
         if (asString(impressionId.value) !== id) {
             return;
@@ -105,7 +115,9 @@ async function fetchCorpus(id: string) {
             return;
         }
 
-        corpusError.value = error instanceof Error ? error.message : 'Corpus could not be loaded.';
+        corpusError.value = error instanceof Error
+            ? error.message
+            : 'Corpus could not be loaded.';
     } finally {
         if (asString(impressionId.value) === id) {
             isLoadingCorpus.value = false;
