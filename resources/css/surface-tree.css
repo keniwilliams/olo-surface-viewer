@@ -1,3 +1,24 @@
+@reference "./app.css";
+@reference 'tailwindcss';
+
+@utility fi-color {
+    color: rgb(var(--gray-200));
+}
+
+@utility fi-color-heading {
+    color: rgb(var(--gray-100));
+}
+
+@utility fi-color-primary {
+    color: rgb(var(--primary-400));
+}
+@utility dark-fi-text-color-400 {
+    --dark-text: var(--color-400);
+}
+@utility fi-text-color-700 {
+    --text: var(--color-700);
+}
+
 .surface-tree {
     font-size: 0.875rem;
 }
@@ -59,7 +80,6 @@
 }
 
 .surface-tree .surface-tree__card {
-    border: 1px solid currentColor;
     padding: 0.75rem;
 }
 
@@ -102,28 +122,94 @@
 }
 
 .surface-tree .surface-tree__corpus-body {
-    font-size: 0.8125rem;
+
     overflow-wrap: anywhere;
     max-height: 60vh;
     overflow-y: auto;
-    border: 1px solid currentColor;
     padding: 0.75rem;
 }
+.surface-tree__corpus-body {
+    @apply text-sm leading-6 rounded-lg;
+    background-color: var(--gray-900);
 
-.surface-tree .surface-tree__corpus-body > :first-child {
-    margin-top: 0;
+    & h1 {
+        @apply mt-4 mb-4 text-2xl font-bold leading-tight text-white;
+    }
+
+    & h2 {
+        @apply mt-3 mb-3 text-xl font-semibold leading-snug text-gray-100;
+    }
+
+    & h3 {
+        @apply mt-6 mb-2 text-lg font-semibold leading-snug text-gray-100;
+    }
+
+    & h4 {
+        @apply mt-5 mb-2 text-base font-semibold text-gray-100;
+    }
+
+    & p {
+        @apply my-3;
+    }
+
+    & a {
+        @apply text-amber-400 underline underline-offset-4;
+    }
+
+    & ul {
+        @apply my-3 list-disc pl-6;
+    }
+
+    & ol {
+        @apply my-3 list-decimal pl-6;
+    }
+
+    & li {
+        @apply my-1.5;
+    }
+
+    & code {
+        @apply rounded-md ;
+    }
+
+    & pre {
+        @apply rounded-md bg-gray-800 px-1.5 py-0.5 font-mono text-xs text-amber-200;
+    }
+
+    & pre code {
+    @apply bg-transparent p-0 text-sm leading-6;
+    color: var(--primary-400);
+    }
+
+    & blockquote {
+        @apply my-4 border-l-4 border-amber-500 pl-4 italic text-gray-300;
+    }
+
+    & hr {
+        @apply my-6 border-gray-700;
+    }
+
+    & table {
+        @apply my-4 w-full border-collapse text-sm;
+    }
+
+    & th,
+    & td {
+        @apply border border-gray-700 p-2 text-left;
+    }
+
+    & th {
+        @apply bg-gray-800 font-semibold text-gray-100;
+    }
+
+    & strong {
+        @apply font-semibold text-gray-100;
+    }
+
+    & em {
+        @apply italic text-gray-300;
+    }
+
 }
 
-.surface-tree .surface-tree__corpus-body > :last-child {
-    margin-bottom: 0;
-}
 
-.surface-tree .surface-tree__corpus-body pre {
-    overflow-x: auto;
-    padding: 0.5rem;
-    border: 1px solid currentColor;
-}
-
-.surface-tree .surface-tree__corpus-body code {
-    font-size: 0.75rem;
-}
