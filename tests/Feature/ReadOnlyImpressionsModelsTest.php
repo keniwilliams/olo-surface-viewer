@@ -9,6 +9,9 @@ use App\Models\Impressions\SensemadeImpression;
 use App\Models\Sidecar\Email;
 use App\Models\Sidecar\EmailMessage;
 use App\Models\Sidecar\EmailSync;
+use App\Models\Sidecar\ScheduledRunnerRun;
+use App\Models\Subconscious\DreamstateRun;
+use App\Models\SurfaceViewer\SchemaSnapshotRecord;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -84,6 +87,8 @@ class ReadOnlyImpressionsModelsTest extends TestCase
             'save on Impression' => fn () => (new Impression)->save(),
             'save on Email' => fn () => (new Email)->save(),
             'delete on Email' => fn () => (new Email)->delete(),
+            'save on DreamstateRun' => fn () => (new DreamstateRun)->save(),
+            'save on SchemaSnapshotRecord' => fn () => (new SchemaSnapshotRecord)->save(),
         ];
 
         foreach ($attempts as $method => $attempt) {
@@ -113,6 +118,9 @@ class ReadOnlyImpressionsModelsTest extends TestCase
             'delete on Impression' => fn () => Impression::query()->delete(),
             'update on Email' => fn () => Email::query()->update(['subject' => 'x']),
             'delete on Email' => fn () => Email::query()->delete(),
+            'update on DreamstateRun' => fn () => DreamstateRun::query()->update(['status' => 'x']),
+            'update on ScheduledRunnerRun' => fn () => ScheduledRunnerRun::query()->update(['status' => 'x']),
+            'delete on SchemaSnapshotRecord' => fn () => SchemaSnapshotRecord::query()->delete(),
         ];
 
         foreach ($attempts as $method => $attempt) {
