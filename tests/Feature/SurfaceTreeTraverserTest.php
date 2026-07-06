@@ -121,6 +121,32 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertSame([], app(FilesystemTreeTraverser::class)->children('domain:filesystem', 0, 3));
     }
 
+    public function test_filesystem_children_are_sorted_alphabetically_with_folders_before_impressions(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('folder-zeta', 'zeta/notes.md'),
+            $this->dreamstateRow('leaf-zebra', 'zebra.md'),
+            $this->dreamstateRow('folder-item10', 'item10/notes.md'),
+            $this->dreamstateRow('folder-beta', 'Beta/notes.md'),
+            $this->dreamstateRow('leaf-apple', 'Apple.md'),
+            $this->dreamstateRow('folder-alpha', 'alpha/notes.md'),
+            $this->dreamstateRow('folder-item2', 'item2/notes.md'),
+        ]);
+
+        $children = app(FilesystemTreeTraverser::class)->children('domain:filesystem', 0, 3);
+
+        $this->assertSame(
+            ['alpha', 'Beta', 'item2', 'item10', 'zeta', 'Apple.md', 'zebra.md'],
+            array_map(fn ($node) => $node->label, $children),
+        );
+        $this->assertSame(
+            ['folder', 'folder', 'folder', 'folder', 'folder', 'impression', 'impression'],
+            array_map(fn ($node) => $node->type, $children),
+        );
+    }
+
     public function test_email_traverser_groups_impressions_by_sender_and_enriches_from_sidecar(): void
     {
         $traverser = app(EmailTreeTraverser::class);

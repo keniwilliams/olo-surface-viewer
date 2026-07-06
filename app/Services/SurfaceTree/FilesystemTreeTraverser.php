@@ -73,9 +73,23 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         }
 
         return [
-            ...array_values($folders),
-            ...array_values($impressions),
+            ...$this->sortNodesByLabel(array_values($folders)),
+            ...$this->sortNodesByLabel(array_values($impressions)),
         ];
+    }
+
+    /**
+     * @param  list<SurfaceTreeNode>  $nodes
+     * @return list<SurfaceTreeNode>
+     */
+    private function sortNodesByLabel(array $nodes): array
+    {
+        usort(
+            $nodes,
+            fn (SurfaceTreeNode $a, SurfaceTreeNode $b): int => strnatcasecmp($a->label, $b->label),
+        );
+
+        return $nodes;
     }
 
     /**

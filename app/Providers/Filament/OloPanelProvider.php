@@ -54,6 +54,12 @@ class OloPanelProvider extends PanelProvider
                     ->url(fn (): string => route('filament.olo.resources.database-connections.databases.cockpit'))
                     ->isActiveWhen(fn (): bool => request()->routeIs('filament.olo.resources.database-connections.databases.cockpit'))
                     ->sort(1),
+
+                NavigationItem::make('Surface Tree')
+                    ->icon(Heroicon::OutlinedShare)
+                    ->url(fn (): string => route('filament.olo.resources.database-connections.databases.surface-viewer'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs('filament.olo.resources.database-connections.databases.surface-viewer'))
+                    ->sort(2),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
