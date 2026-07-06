@@ -3,13 +3,16 @@
 namespace App\Services\SurfaceTree;
 
 use App\Services\SurfaceTree\Concerns\BuildsSurfaceTreeNodes;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Throwable;
 
 class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
 {
     use BuildsSurfaceTreeNodes;
+
+    const array CANDIDATES = ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference'];
+
+    public function __construct(
+        private readonly ImpressionsFilesystemFeed $feed,
+    ) {}
 
     /**
      * @return list<SurfaceTreeNode>
@@ -26,7 +29,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
             return [];
         }
 
-        $rows = $this->filesystemImpressions();
+        $rows = $this->feed->latestPathBearingRows();
 
         if ($rows === []) {
             return [];
@@ -37,7 +40,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         $impressions = [];
 
         foreach ($rows as $row) {
-            $path = $this->value($row, ['source_path', 'path', 'file_path', 'source_ref', 'source_reference']);
+            $path = $this->value($row, self::CANDIDATES);
             $segments = $this->pathSegments($path);
 
             if ($segments === [] || ! $this->startsWithSegments($segments, $prefix)) {
@@ -73,56 +76,28 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         }
 
         return [
-            ...array_values($folders),
-            ...array_values($impressions),
+            ...$this->sortNodesByLabel(array_values($folders)),
+            ...$this->sortNodesByLabel(array_values($impressions)),
         ];
     }
 
-    /**
-     * @return list<object>
-     */
-    private function filesystemImpressions(): array
+    public function rawCorpus(string $impressionId): ?string
     {
-        $table = $this->firstExistingTable('impressions', ['sensemade_impressions', 'impressions']);
-
-        if ($table === null) {
-            return [];
-        }
-
-        try {
-            $columns = Schema::connection('impressions')->getColumnListing($table);
-            $query = DB::connection('impressions')->table($table)->select($columns)->limit(250);
-
-            if (in_array('domain', $columns, true)) {
-                $query->where('domain', 'filesystem');
-            }
-
-            foreach (['observed_at', 'sensemade_at', 'created_at'] as $orderColumn) {
-                if (in_array($orderColumn, $columns, true)) {
-                    $query->orderByDesc($orderColumn);
-                    break;
-                }
-            }
-
-            return $query->get()->all();
-        } catch (Throwable) {
-            return [];
-        }
+        return $this->feed->rawCorpus($impressionId);
     }
 
-    private function firstExistingTable(string $connection, array $tables): ?string
+    /**
+     * @param  list<SurfaceTreeNode>  $nodes
+     * @return list<SurfaceTreeNode>
+     */
+    private function sortNodesByLabel(array $nodes): array
     {
-        foreach ($tables as $table) {
-            try {
-                if (Schema::connection($connection)->hasTable($table)) {
-                    return $table;
-                }
-            } catch (Throwable) {
-                return null;
-            }
-        }
+        usort(
+            $nodes,
+            fn (SurfaceTreeNode $a, SurfaceTreeNode $b): int => strnatcasecmp($a->label, $b->label),
+        );
 
-        return null;
+        return $nodes;
     }
 
     /**
@@ -179,7 +154,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
     private function hasFilesystemChildren(array $rows, array $prefix): bool
     {
         foreach ($rows as $row) {
-            $segments = $this->pathSegments($this->value($row, ['source_path', 'path', 'file_path', 'source_ref', 'source_reference']));
+            $segments = $this->pathSegments($this->value($row, self::CANDIDATES));
 
             if ($this->startsWithSegments($segments, $prefix) && count($segments) > count($prefix)) {
                 return true;
@@ -205,7 +180,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
             return null;
         }
 
-        $sourcePath = $this->value($row, ['source_path', 'path', 'file_path', 'source_ref', 'source_reference']);
+        $sourcePath = $this->value($row, self::CANDIDATES);
 
         return $this->impressionNode(
             impressionId: $impressionId,

@@ -9,6 +9,16 @@
             </div>
         </dl>
 
+        <section v-if="impressionId" class="surface-tree__corpus" aria-label="Raw corpus">
+            <h3 class="surface-tree__corpus-title">raw corpus</h3>
+
+            <p v-if="isLoadingCorpus" class="surface-tree__corpus-muted">Loading corpus...</p>
+            <p v-else-if="corpusError" class="surface-tree__corpus-muted" role="alert">{{ corpusError }}</p>
+            <p v-else-if="!compiledMarkdown" class="surface-tree__corpus-muted">No corpus available.</p>
+            <!-- Read-only rendered markdown; the corpus is never editable here. -->
+            <div v-else class="surface-tree__corpus-body" v-html="compiledMarkdown"></div>
+        </section>
+
         <p v-if="canonicalHref">
             <a :href="canonicalHref">Open canonical impression</a>
         </p>
@@ -16,7 +26,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { marked } from 'marked';
 import type { SurfaceMainContentState } from './types';
 
 const props = defineProps<{
@@ -40,6 +51,79 @@ const status = computed(() => valueFromPayload(['status', 'process_status', 'pro
 const observedTime = computed(() => valueFromPayload(['observed_at', 'observed_time', 'observedTime']));
 const sourceReference = computed(() => valueFromPayload(['source_path', 'sourcePath', 'source_ref', 'sourceRef']));
 const canonicalHref = computed(() => asString(payload.value.href));
+
+const rawCorpus = ref<string | null>(null);
+const isLoadingCorpus = ref(false);
+const corpusError = ref<string | null>(null);
+
+const compiledMarkdown = computed(() => {
+    if (!rawCorpus.value) {
+        return null;
+    }
+
+    return marked.parse(rawCorpus.value, { async: false });
+});
+
+// The card renders immediately from the node payload; the corpus arrives
+// afterwards from its own endpoint so tree responses stay light.
+watch(
+    () => asString(impressionId.value),
+    (id) => {
+        rawCorpus.value = null;
+        corpusError.value = null;
+
+        if (id) {
+            fetchCorpus(id);
+        }
+    },
+    { immediate: true },
+);
+
+async function fetchCorpus(id: string) {
+    isLoadingCorpus.value = true;
+    corpusError.value = null;
+
+    try {
+        const response = await fetch(`/surface-tree/impressions/${encodeURIComponent(id)}/corpus`, {
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            if (asString(impressionId.value) === id) {
+                corpusError.value = `Request failed: ${response.status}`;
+            }
+
+            return;
+        }
+
+        const payload = (await response.json()) as {
+            data?: {
+                impression_id?: string;
+                raw_corpus?: string | null;
+            };
+        };
+
+        if (asString(impressionId.value) !== id) {
+            return;
+        }
+
+        rawCorpus.value = asString(payload.data?.raw_corpus);
+    } catch (error) {
+        if (asString(impressionId.value) !== id) {
+            return;
+        }
+
+        corpusError.value = error instanceof Error
+            ? error.message
+            : 'Corpus could not be loaded.';
+    } finally {
+        if (asString(impressionId.value) === id) {
+            isLoadingCorpus.value = false;
+        }
+    }
+}
 
 const visibleFields = computed(() => [
     { label: 'impression id', value: asString(impressionId.value) },

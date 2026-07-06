@@ -3,6 +3,7 @@
 namespace App\Services\SurfaceTree\Concerns;
 
 use App\Services\SurfaceTree\SurfaceTreeNode;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 trait BuildsSurfaceTreeNodes
@@ -76,18 +77,23 @@ trait BuildsSurfaceTreeNodes
     private function value(mixed $row, array $candidates): ?string
     {
         foreach ($candidates as $candidate) {
-            if (! is_object($row) || ! property_exists($row, $candidate)) {
-                continue;
-            }
+            $value = $this->rowValue($row, $candidate);
 
-            $value = $row->{$candidate};
-
-            if ($value !== null && $value !== '') {
+            if ($value !== null && $value !== '' && ! is_resource($value)) {
                 return (string) $value;
             }
         }
 
         return null;
+    }
+
+    private function rowValue(mixed $row, string $key): mixed
+    {
+        if ($row instanceof Model) {
+            return $row->getAttribute($key);
+        }
+
+        return is_object($row) && property_exists($row, $key) ? $row->{$key} : null;
     }
 
     private function titleFromIdentifier(?string $identifier, string $fallback): string

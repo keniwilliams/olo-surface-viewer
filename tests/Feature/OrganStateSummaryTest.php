@@ -41,9 +41,8 @@ class OrganStateSummaryTest extends TestCase
         $this->configureSqliteOrgan('surface_viewer');
 
         $this->createBloodstreamMemory('2026-07-05 11:59:00');
-        $this->createActivityTable('subconscious', 'dreamstate_runs', 'completed_at', '2026-07-05 11:58:00');
         $this->createActivityTable('impressions', 'sensemade_impressions', 'sensemade_at', '2026-07-05 11:57:00');
-        $this->createActivityTable('sidecar', 'email_syncs', 'updated_at', '2026-07-05 11:56:00');
+        $this->createActivityTable('sidecar', 'emails', 'received_at', '2026-07-05 11:56:00');
         $this->createActivityTable('surface_viewer', 'database_schema_snapshots', 'captured_at', '2026-07-05 11:55:00');
 
         DB::connection('impressions')->enableQueryLog();
@@ -54,6 +53,8 @@ class OrganStateSummaryTest extends TestCase
 
         $bloodstream = $this->summary($summaries, 'bloodstream');
         $impressions = $this->summary($summaries, 'impressions');
+        $sidecar = $this->summary($summaries, 'sidecar');
+        $subconscious = $this->summary($summaries, 'subconscious');
         $surfaceViewer = $this->summary($summaries, 'surface_viewer');
 
         $this->assertSame('readable', $bloodstream['read_status']);
@@ -68,6 +69,17 @@ class OrganStateSummaryTest extends TestCase
         $this->assertSame('fresh', $impressions['staleness_state']);
         $this->assertSame('2026-07-05T11:57:00.000000Z', $impressions['last_observed_activity_at']);
         $this->assertSame('impressions:sensemade_impressions.sensemade_at', $impressions['source']);
+
+        $this->assertSame('readable', $sidecar['read_status']);
+        $this->assertSame('2026-07-05T11:56:00.000000Z', $sidecar['last_observed_activity_at']);
+        $this->assertSame('sidecar:emails.received_at', $sidecar['source']);
+
+        // The subconscious tables live in a Postgres-only schema, so on this
+        // sqlite double the explicit sources find no activity — readable, not
+        // an error, and never discovered by crawling.
+        $this->assertSame('readable', $subconscious['read_status']);
+        $this->assertNull($subconscious['last_observed_activity_at']);
+        $this->assertSame('read succeeded; no timestamped activity was found', $subconscious['latest_message']);
 
         $this->assertSame('readable', $surfaceViewer['read_status']);
         $this->assertSame('2026-07-05T11:55:00.000000Z', $surfaceViewer['last_observed_activity_at']);

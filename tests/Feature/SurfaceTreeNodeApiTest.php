@@ -106,6 +106,39 @@ class SurfaceTreeNodeApiTest extends TestCase
             ->assertJsonPath('data.0.meta.thread_id', 'thread-1');
     }
 
+    public function test_corpus_endpoint_returns_raw_corpus_for_impression(): void
+    {
+        Schema::connection('impressions')->create('impressions_dreamstate_feed', function ($table): void {
+            $table->string('impression_id');
+            $table->string('source_path')->nullable();
+            $table->text('raw_corpus')->nullable();
+            $table->string('raw_corpus_encoding')->nullable();
+            $table->timestampTz('observed_at')->nullable();
+        });
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            'impression_id' => 'feed-uuid',
+            'source_path' => 'notes.md',
+            'raw_corpus' => "# Heading\n\nBody text.",
+            'raw_corpus_encoding' => 'utf8',
+            'observed_at' => '2026-07-05 12:00:00',
+        ]);
+
+        $this->getJson('/surface-tree/impressions/feed-uuid/corpus')
+            ->assertOk()
+            ->assertJsonPath('data.impression_id', 'feed-uuid')
+            ->assertJsonPath('data.raw_corpus', "# Heading\n\nBody text.")
+            ->assertJsonPath('meta.read_only', true);
+    }
+
+    public function test_corpus_endpoint_returns_null_for_unknown_impression(): void
+    {
+        $this->getJson('/surface-tree/impressions/missing-uuid/corpus')
+            ->assertOk()
+            ->assertJsonPath('data.impression_id', 'missing-uuid')
+            ->assertJsonPath('data.raw_corpus', null);
+    }
+
     public function test_depth_window_marks_returned_nodes_at_the_terminal_depth(): void
     {
         $this->getJson('/surface-tree/nodes/domain:filesystem/children?depth_window=1')

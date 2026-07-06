@@ -13,3 +13,6 @@ Route::get('/surface-tree/nodes', [SurfaceTreeNodeController::class, 'roots'])
 Route::get('/surface-tree/nodes/{nodeKey}/children', [SurfaceTreeNodeController::class, 'children'])
     ->where('nodeKey', '.*')
     ->name('surface-tree.nodes.children');
+
+Route::get('/surface-tree/impressions/{impressionId}/corpus', [SurfaceTreeNodeController::class, 'corpus'])
+    ->name('surface-tree.impressions.corpus');
