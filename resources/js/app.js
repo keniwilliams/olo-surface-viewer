@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import ObservationCockpit from './components/ObservationCockpit.vue';
 import SurfaceTreeBrowser from './components/surface-tree/SurfaceTreeBrowser.vue';
+import SurfaceTreeSidebar from './components/surface-tree/SurfaceTreeSidebar.vue';
 
 const desktopSidebarBreakpoint = 1024;
 
@@ -53,6 +54,21 @@ const mountSurfaceTreeBrowser = () => {
     createApp(SurfaceTreeBrowser).mount(surfaceTree);
 };
 
+const mountSurfaceTreeSidebar = () => {
+    const sidebarTree = document.getElementById('surface-tree-sidebar');
+
+    if (!sidebarTree || sidebarTree.__oloSurfaceTreeSidebarMounted) {
+        return;
+    }
+
+    sidebarTree.__oloSurfaceTreeSidebarMounted = true;
+
+    createApp(SurfaceTreeSidebar, {
+        rootsUrl: sidebarTree.dataset.rootsUrl,
+        childrenUrlTemplate: sidebarTree.dataset.childrenUrlTemplate,
+    }).mount(sidebarTree);
+};
+
 const scheduleFilamentSidebarDefaults = () => {
     requestAnimationFrame(configureFilamentSidebarDefaults);
 };
@@ -61,6 +77,7 @@ const initializeApp = () => {
     scheduleFilamentSidebarDefaults();
     mountObservationCockpit();
     mountSurfaceTreeBrowser();
+    mountSurfaceTreeSidebar();
 };
 
 document.addEventListener('alpine:init', scheduleFilamentSidebarDefaults);

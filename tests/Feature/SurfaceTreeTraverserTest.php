@@ -147,6 +147,25 @@ class SurfaceTreeTraverserTest extends TestCase
         );
     }
 
+    public function test_filesystem_raw_corpus_is_looked_up_per_impression_not_embedded_in_children(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('feed-uuid', 'notes.md', rawCorpus: 'Full observed corpus text.'),
+        ]);
+
+        $traverser = app(FilesystemTreeTraverser::class);
+        $children = $traverser->children('domain:filesystem', 0, 3);
+
+        $this->assertCount(1, $children);
+        $this->assertSame('impression', $children[0]->type);
+        $this->assertArrayNotHasKey('raw_corpus', $children[0]->meta);
+
+        $this->assertSame('Full observed corpus text.', $traverser->rawCorpus('feed-uuid'));
+        $this->assertNull($traverser->rawCorpus('missing-uuid'));
+    }
+
     public function test_email_traverser_groups_impressions_by_sender_and_enriches_from_sidecar(): void
     {
         $traverser = app(EmailTreeTraverser::class);
@@ -209,6 +228,7 @@ class SurfaceTreeTraverserTest extends TestCase
             $table->string('status')->nullable();
             $table->string('source_path')->nullable();
             $table->string('source_ref')->nullable();
+            $table->text('raw_corpus')->nullable();
             $table->timestampTz('observed_at')->nullable();
         });
     }
@@ -221,6 +241,7 @@ class SurfaceTreeTraverserTest extends TestCase
         ?string $sourcePath,
         string $domain = 'filesystem',
         string $observedAt = '2026-07-05 12:00:00',
+        ?string $rawCorpus = null,
     ): array {
         return [
             'impression_id' => $impressionId,
@@ -230,6 +251,7 @@ class SurfaceTreeTraverserTest extends TestCase
             'status' => 'observed',
             'source_path' => $sourcePath,
             'source_ref' => null,
+            'raw_corpus' => $rawCorpus,
             'observed_at' => $observedAt,
         ];
     }

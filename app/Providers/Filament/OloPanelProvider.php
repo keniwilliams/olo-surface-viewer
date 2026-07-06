@@ -40,6 +40,12 @@ class OloPanelProvider extends PanelProvider
                 PanelsRenderHook::SCRIPTS_AFTER,
                 fn (): string => app(Vite::class)(['resources/js/app.js'])->toHtml(),
             )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn (): string => request()->routeIs('filament.olo.resources.database-connections.databases.surface-viewer')
+                    ? view('filament.sidebar.surface-tree')->render()
+                    : '',
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])

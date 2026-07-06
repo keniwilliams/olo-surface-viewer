@@ -37,6 +37,11 @@ class SurfaceTreeReadModel
         );
     }
 
+    public function rawCorpusFor(string $impressionId): ?string
+    {
+        return $this->filesystemTree->rawCorpus($impressionId);
+    }
+
     private function normaliseForWindow(SurfaceTreeNode $node, int $parentDepth, int $depthWindow): SurfaceTreeNode
     {
         $terminalDepth = $parentDepth + $depthWindow;

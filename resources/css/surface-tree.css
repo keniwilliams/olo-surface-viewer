@@ -85,3 +85,45 @@
 .surface-tree .surface-tree__detail-value {
     margin: 0;
 }
+
+.surface-tree .surface-tree__corpus {
+    margin-top: 0.75rem;
+}
+
+.surface-tree .surface-tree__corpus-title {
+    margin: 0 0 0.375rem;
+    font-size: 0.75rem;
+    opacity: 0.65;
+}
+
+.surface-tree .surface-tree__corpus-muted {
+    margin: 0;
+    opacity: 0.65;
+}
+
+.surface-tree .surface-tree__corpus-body {
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid currentColor;
+    padding: 0.75rem;
+}
+
+.surface-tree .surface-tree__corpus-body > :first-child {
+    margin-top: 0;
+}
+
+.surface-tree .surface-tree__corpus-body > :last-child {
+    margin-bottom: 0;
+}
+
+.surface-tree .surface-tree__corpus-body pre {
+    overflow-x: auto;
+    padding: 0.5rem;
+    border: 1px solid currentColor;
+}
+
+.surface-tree .surface-tree__corpus-body code {
+    font-size: 0.75rem;
+}
