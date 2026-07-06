@@ -56,6 +56,71 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertTrue($node->isTerminalDepth);
     }
 
+    public function test_filesystem_root_returns_children_when_dreamstate_feed_has_source_path_rows(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('feed-uuid', 'D:\\OLO-Software\\olo-surface-viewer\\readme.md'),
+        ]);
+
+        $children = app(FilesystemTreeTraverser::class)->children('domain:filesystem', 0, 3);
+
+        $this->assertCount(1, $children);
+        $this->assertSame('D:', $children[0]->label);
+        $this->assertSame('folder', $children[0]->type);
+        $this->assertTrue($children[0]->hasChildren);
+    }
+
+    public function test_filesystem_root_does_not_require_filesystem_domain(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('feed-uuid', 'D:\\Projects\\notes.md', domain: 'dreamstate'),
+        ]);
+
+        $children = app(FilesystemTreeTraverser::class)->children('domain:filesystem', 0, 3);
+
+        $this->assertCount(1, $children);
+        $this->assertSame('D:', $children[0]->label);
+    }
+
+    public function test_filesystem_row_limit_is_applied_after_path_bearing_filtering(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        // 600 newer rows without a source_path must not crowd the older path-bearing row out of the 500-row window.
+        $fillers = [];
+        foreach (range(1, 600) as $index) {
+            $fillers[] = $this->dreamstateRow("filler-{$index}", null, observedAt: '2026-07-06 12:00:00');
+        }
+        foreach (array_chunk($fillers, 100) as $chunk) {
+            DB::connection('impressions')->table('impressions_dreamstate_feed')->insert($chunk);
+        }
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('feed-uuid', 'D:\\OLO-Software\\olo-surface-viewer\\readme.md', observedAt: '2026-01-01 00:00:00'),
+        ]);
+
+        $children = app(FilesystemTreeTraverser::class)->children('domain:filesystem', 0, 3);
+
+        $this->assertCount(1, $children);
+        $this->assertSame('D:', $children[0]->label);
+    }
+
+    public function test_filesystem_root_is_empty_only_when_no_usable_path_like_fields_exist(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('feed-uuid', null),
+            $this->dreamstateRow('feed-uuid-2', ''),
+        ]);
+
+        $this->assertSame([], app(FilesystemTreeTraverser::class)->children('domain:filesystem', 0, 3));
+    }
+
     public function test_email_traverser_groups_impressions_by_sender_and_enriches_from_sidecar(): void
     {
         $traverser = app(EmailTreeTraverser::class);
@@ -105,6 +170,42 @@ class SurfaceTreeTraverserTest extends TestCase
             $table->string('thread_id')->nullable();
             $table->timestampTz('observed_at')->nullable();
         });
+    }
+
+    private function createDreamstateFeedTable(): void
+    {
+        Schema::connection('impressions')->create('impressions_dreamstate_feed', function ($table): void {
+            $table->id();
+            $table->string('impression_id');
+            $table->string('domain')->nullable();
+            $table->string('label')->nullable();
+            $table->string('kind')->nullable();
+            $table->string('status')->nullable();
+            $table->string('source_path')->nullable();
+            $table->string('source_ref')->nullable();
+            $table->timestampTz('observed_at')->nullable();
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dreamstateRow(
+        string $impressionId,
+        ?string $sourcePath,
+        string $domain = 'filesystem',
+        string $observedAt = '2026-07-05 12:00:00',
+    ): array {
+        return [
+            'impression_id' => $impressionId,
+            'domain' => $domain,
+            'label' => null,
+            'kind' => 'file',
+            'status' => 'observed',
+            'source_path' => $sourcePath,
+            'source_ref' => null,
+            'observed_at' => $observedAt,
+        ];
     }
 
     private function createSidecarEmailsTable(): void

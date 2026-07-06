@@ -37,7 +37,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         $impressions = [];
 
         foreach ($rows as $row) {
-            $path = $this->value($row, ['source_path', 'path', 'file_path', 'source_ref', 'source_reference']);
+            $path = $this->value($row, ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference']);
             $segments = $this->pathSegments($path);
 
             if ($segments === [] || ! $this->startsWithSegments($segments, $prefix)) {
@@ -83,7 +83,11 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
      */
     private function filesystemImpressions(): array
     {
-        $table = $this->firstExistingTable('impressions', ['sensemade_impressions', 'impressions']);
+        $table = $this->firstExistingTable('impressions', [
+            'impressions_dreamstate_feed',
+            'sensemade_impressions',
+            'impressions',
+        ]);
 
         if ($table === null) {
             return [];
@@ -91,10 +95,15 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
 
         try {
             $columns = Schema::connection('impressions')->getColumnListing($table);
-            $query = DB::connection('impressions')->table($table)->select($columns)->limit(250);
 
-            if (in_array('domain', $columns, true)) {
-                $query->where('domain', 'filesystem');
+            $query = DB::connection('impressions')
+                ->table($table)
+                ->select($columns);
+
+            if (in_array('source_path', $columns, true)) {
+                $query
+                    ->whereNotNull('source_path')
+                    ->where('source_path', '<>', '');
             }
 
             foreach (['observed_at', 'sensemade_at', 'created_at'] as $orderColumn) {
@@ -104,7 +113,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
                 }
             }
 
-            return $query->get()->all();
+            return $query->limit(500)->get()->all();
         } catch (Throwable) {
             return [];
         }
@@ -113,16 +122,37 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
     private function firstExistingTable(string $connection, array $tables): ?string
     {
         foreach ($tables as $table) {
-            try {
-                if (Schema::connection($connection)->hasTable($table)) {
-                    return $table;
-                }
-            } catch (Throwable) {
-                return null;
+            if ($this->tableOrViewExists($connection, $table)) {
+                return $table;
             }
         }
 
         return null;
+    }
+
+    private function tableOrViewExists(string $connection, string $table): bool
+    {
+        try {
+            if (Schema::connection($connection)->hasTable($table)) {
+                return true;
+            }
+        } catch (Throwable) {
+            // Fall through to the driver-level probe below.
+        }
+
+        // Schema::hasTable() can miss Postgres views; to_regclass resolves both.
+        try {
+            if (DB::connection($connection)->getDriverName() !== 'pgsql') {
+                return false;
+            }
+
+            $result = DB::connection($connection)
+                ->selectOne('select to_regclass(?) as relation', ['public.'.$table]);
+
+            return ($result->relation ?? null) !== null;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -179,7 +209,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
     private function hasFilesystemChildren(array $rows, array $prefix): bool
     {
         foreach ($rows as $row) {
-            $segments = $this->pathSegments($this->value($row, ['source_path', 'path', 'file_path', 'source_ref', 'source_reference']));
+            $segments = $this->pathSegments($this->value($row, ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference']));
 
             if ($this->startsWithSegments($segments, $prefix) && count($segments) > count($prefix)) {
                 return true;
@@ -205,7 +235,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
             return null;
         }
 
-        $sourcePath = $this->value($row, ['source_path', 'path', 'file_path', 'source_ref', 'source_reference']);
+        $sourcePath = $this->value($row, ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference']);
 
         return $this->impressionNode(
             impressionId: $impressionId,
