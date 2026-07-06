@@ -3,13 +3,14 @@
 namespace App\Services\SurfaceTree;
 
 use App\Services\SurfaceTree\Concerns\BuildsSurfaceTreeNodes;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Throwable;
 
 class EmailTreeTraverser implements SurfaceTreeDomainTraverser
 {
     use BuildsSurfaceTreeNodes;
+
+    public function __construct(
+        private readonly EmailImpressionsFeed $feed,
+    ) {}
 
     /**
      * @return list<SurfaceTreeNode>
@@ -20,7 +21,7 @@ class EmailTreeTraverser implements SurfaceTreeDomainTraverser
             return [];
         }
 
-        $rows = $this->emailImpressions();
+        $rows = $this->feed->latestEmailRows();
 
         if ($rows === []) {
             return [];
@@ -96,58 +97,13 @@ class EmailTreeTraverser implements SurfaceTreeDomainTraverser
     }
 
     /**
-     * @return list<object>
-     */
-    private function emailImpressions(): array
-    {
-        $table = $this->firstExistingTable('impressions', ['sensemade_impressions', 'impressions']);
-
-        if ($table === null) {
-            return [];
-        }
-
-        try {
-            $columns = Schema::connection('impressions')->getColumnListing($table);
-            $query = DB::connection('impressions')->table($table)->select($columns)->limit(250);
-
-            if (in_array('domain', $columns, true)) {
-                $query->where('domain', 'email');
-            }
-
-            foreach (['observed_at', 'sensemade_at', 'created_at'] as $orderColumn) {
-                if (in_array($orderColumn, $columns, true)) {
-                    $query->orderByDesc($orderColumn);
-                    break;
-                }
-            }
-
-            return $query->get()->all();
-        } catch (Throwable) {
-            return [];
-        }
-    }
-
-    /**
      * @return array<string, object>
      */
     private function sidecarEmailsByReference(): array
     {
-        $table = $this->firstExistingTable('sidecar', ['emails', 'email_messages', 'email_syncs']);
-
-        if ($table === null) {
-            return [];
-        }
-
-        try {
-            $columns = Schema::connection('sidecar')->getColumnListing($table);
-            $rows = DB::connection('sidecar')->table($table)->select($columns)->limit(250)->get();
-        } catch (Throwable) {
-            return [];
-        }
-
         $indexed = [];
 
-        foreach ($rows as $row) {
+        foreach ($this->feed->sidecarEmailRows() as $row) {
             foreach (['source_ref', 'source_reference', 'message_id', 'email_id', 'id'] as $column) {
                 $value = $this->value($row, [$column]);
 
@@ -158,21 +114,6 @@ class EmailTreeTraverser implements SurfaceTreeDomainTraverser
         }
 
         return $indexed;
-    }
-
-    private function firstExistingTable(string $connection, array $tables): ?string
-    {
-        foreach ($tables as $table) {
-            try {
-                if (Schema::connection($connection)->hasTable($table)) {
-                    return $table;
-                }
-            } catch (Throwable) {
-                return null;
-            }
-        }
-
-        return null;
     }
 
     /**
