@@ -48,6 +48,19 @@ class SurfaceTreeNodeController extends Controller
         ]);
     }
 
+    public function corpus(SurfaceTreeReadModel $surfaceTree, string $impressionId): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'impression_id' => $impressionId,
+                'raw_corpus' => $surfaceTree->rawCorpusFor($impressionId),
+            ],
+            'meta' => [
+                'read_only' => true,
+            ],
+        ]);
+    }
+
     /**
      * @return array{0: int, 1: JsonResponse|null}
      */

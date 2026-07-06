@@ -11,6 +11,8 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
 {
     use BuildsSurfaceTreeNodes;
 
+    const array CANDIDATES = ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference', 'raw_corpus'];
+
     /**
      * @return list<SurfaceTreeNode>
      */
@@ -37,7 +39,8 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         $impressions = [];
 
         foreach ($rows as $row) {
-            $path = $this->value($row, ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference']);
+            $candidates = self::CANDIDATES;
+            $path = $this->value($row, $candidates);
             $segments = $this->pathSegments($path);
 
             if ($segments === [] || ! $this->startsWithSegments($segments, $prefix)) {
@@ -73,9 +76,23 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         }
 
         return [
-            ...array_values($folders),
-            ...array_values($impressions),
+            ...$this->sortNodesByLabel(array_values($folders)),
+            ...$this->sortNodesByLabel(array_values($impressions)),
         ];
+    }
+
+    /**
+     * @param  list<SurfaceTreeNode>  $nodes
+     * @return list<SurfaceTreeNode>
+     */
+    private function sortNodesByLabel(array $nodes): array
+    {
+        usort(
+            $nodes,
+            fn (SurfaceTreeNode $a, SurfaceTreeNode $b): int => strnatcasecmp($a->label, $b->label),
+        );
+
+        return $nodes;
     }
 
     /**
@@ -209,7 +226,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
     private function hasFilesystemChildren(array $rows, array $prefix): bool
     {
         foreach ($rows as $row) {
-            $segments = $this->pathSegments($this->value($row, ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference']));
+            $segments = $this->pathSegments($this->value($row, self::CANDIDATES));
 
             if ($this->startsWithSegments($segments, $prefix) && count($segments) > count($prefix)) {
                 return true;
@@ -235,7 +252,8 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
             return null;
         }
 
-        $sourcePath = $this->value($row, ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference']);
+        $sourcePath = $this->value($row, self::CANDIDATES);
+
 
         return $this->impressionNode(
             impressionId: $impressionId,
@@ -250,5 +268,75 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
                 'source_path' => $sourcePath,
             ],
         );
+    }
+
+    public function rawCorpus(string $impressionId): ?string
+    {
+        $table = $this->firstExistingTable('impressions', [
+            'impressions_dreamstate_feed',
+            'sensemade_impressions',
+            'impressions',
+        ]);
+
+        if ($table === null) {
+            return null;
+        }
+
+        try {
+            $columns = Schema::connection('impressions')->getColumnListing($table);
+
+            if (! in_array('raw_corpus', $columns, true)) {
+                return null;
+            }
+
+            $idColumn = null;
+
+            foreach (['impression_id', 'uuid', 'id'] as $candidate) {
+                if (in_array($candidate, $columns, true)) {
+                    $idColumn = $candidate;
+                    break;
+                }
+            }
+
+            if ($idColumn === null) {
+                return null;
+            }
+
+            $row = DB::connection('impressions')
+                ->table($table)
+                ->select($columns)
+                ->where($idColumn, $impressionId)
+                ->first();
+
+            return $row === null ? null : $this->rawCorpusText($row);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * The impressions table stores raw_corpus as bytea; PDO surfaces it as a
+     * stream resource. Decode it the same way the dreamstate feed view does:
+     * utf8 corpora become text, anything else is base64-encoded.
+     */
+    private function rawCorpusText(object $row): ?string
+    {
+        $raw = property_exists($row, 'raw_corpus') ? $row->raw_corpus : null;
+
+        if (is_resource($raw)) {
+            $raw = stream_get_contents($raw);
+        }
+
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $encoding = $this->value($row, ['raw_corpus_encoding']);
+
+        if (($encoding === null || $encoding === 'utf8') && mb_check_encoding($raw, 'UTF-8')) {
+            return $raw;
+        }
+
+        return base64_encode($raw);
     }
 }
