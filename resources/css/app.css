@@ -8,6 +8,10 @@
 @source '../../resources/js/**/*.vue';
 
 @theme {
+    --surface-bg: 9 9 11;
+    --surface-bg-alpha: 95%;
+    --surface-border: 255 255 255;
+    --surface-border-alpha: 10%;
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --dark-text: var(--color-400);
@@ -15,6 +19,7 @@
     --color-olo-bg-color-main-content: oklch(0.193 0.045 243);
     --color-olo-bg: var(--gray-800);
     --color-olo-sidenav-bg: var(--gray-900);
+
     --danger-50: oklch(0.971 0.013 17.38);
     --danger-100: oklch(0.936 0.032 17.717);
     --danger-200: oklch(0.885 0.062 18.334);
@@ -109,10 +114,58 @@
             & .fi-sidebar-item-btn,
             & .fi-sidebar-group-btn,
             & .fi-sidebar-group-dropdown-trigger-btn {
-                @apply justify-center gap-x-0 px-0;
+                @apply justify-center gap-x-0 px-0 rounded-l-none;
+            }
+
+            html.surface-tree-flyout-open & .fi-sidebar-item-btn,
+            html.surface-tree-flyout-open & .fi-sidebar-group-btn,
+            html.surface-tree-flyout-open & .fi-sidebar-group-dropdown-trigger-btn {
+                @apply rounded-none;
             }
         }
     }
+
+    .fi-sidebar-item-btn,
+    .fi-sidebar-group-btn,
+    .fi-sidebar-group-dropdown-trigger-btn {
+        @apply transition-[border-radius] duration-200 ease-out;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
+        @apply hidden;
+    }
+
+    html.surface-tree-flyout-open {
+        & .fi-sidebar-nav {
+            @apply overflow-visible;
+        }
+
+        & .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
+            @apply fixed rounded-xl inset-y-0 z-40 flex w-80 flex-col mt-7 shadow-xl ring-1 ring-white/10;
+            left: var(--collapsed-sidebar-width);
+            background-color: rgb(var(--surface-bg) / var(--surface-bg-alpha));
+        }
+
+        & .surface-tree-flyout__header {
+            @apply flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 flex-none;
+        }
+
+        & .surface-tree-flyout__title {
+            @apply text-sm font-semibold;
+        }
+
+        & .surface-tree-flyout__close {
+            @apply border-0 bg-transparent text-inherit text-xl leading-none cursor-pointer px-1;
+        }
+
+        & #surface-tree-sidebar {
+            @apply overflow-y-auto px-3 pb-3;
+        }
+    }
+}
+
+.surface-tree-flyout__header {
+    @apply hidden;
 }
 
 .fi-breadcrumbs {

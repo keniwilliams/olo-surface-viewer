@@ -33,6 +33,7 @@ class OloPanelProvider extends PanelProvider
             ->id('olo')
             ->path('olo')
             ->login()
+            ->spa()
             ->viteTheme('resources/css/app.css')
             ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth(Width::Full)

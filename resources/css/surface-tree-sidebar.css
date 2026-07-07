@@ -1,43 +1,6 @@
 @reference "./app.css";
 @reference "tailwindcss";
 
-.surface-tree-flyout__header {
-    @apply hidden;
-}
-
-@media (min-width: 1024px) {
-    .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
-        @apply hidden;
-    }
-
-    html.surface-tree-flyout-open {
-        & .fi-sidebar-nav {
-            @apply overflow-visible;
-        }
-
-        & .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
-            @apply fixed inset-y-0 z-40 flex w-80 flex-col bg-olo-sidenav-bg shadow-xl ring-1 ring-white/10;
-            left: var(--collapsed-sidebar-width);
-        }
-
-        & .surface-tree-flyout__header {
-            @apply flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 flex-none;
-        }
-
-        & .surface-tree-flyout__title {
-            @apply text-sm font-semibold;
-        }
-
-        & .surface-tree-flyout__close {
-            @apply border-0 bg-transparent text-inherit text-xl leading-none cursor-pointer px-1;
-        }
-
-        & #surface-tree-sidebar {
-            @apply overflow-y-auto px-3 pb-3;
-        }
-    }
-}
-
 .surface-tree--sidebar {
     @apply text-xs px-0 pt-1 pb-3 overflow-x-hidden;
 

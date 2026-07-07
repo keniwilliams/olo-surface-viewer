@@ -22,6 +22,10 @@ const configureFilamentSidebarDefaults = () => {
         this.resizeObserver = null;
     };
 
+    if (localStorage.getItem('isOpen') !== null) {
+        return;
+    }
+
     const shouldOpenSidebar = window.innerWidth >= desktopSidebarBreakpoint;
 
     sidebar.isOpen = shouldOpenSidebar;
@@ -87,8 +91,34 @@ const scheduleFilamentSidebarDefaults = () => {
 };
 
 const surfaceTreeFlyoutOpenClass = 'surface-tree-flyout-open';
+let surfaceTreeFlyoutDismissed = false;
 
 const closeSurfaceTreeFlyout = () => {
+    surfaceTreeFlyoutDismissed = true;
+    document.documentElement.classList.remove(surfaceTreeFlyoutOpenClass);
+};
+
+const openSurfaceTreeFlyout = () => {
+    surfaceTreeFlyoutDismissed = false;
+    document.documentElement.classList.add(surfaceTreeFlyoutOpenClass);
+};
+
+// Clicking the nav item is a normal link (Filament/Livewire treats it as a
+// `wire:navigate` navigation even when it points at the current page), so we
+// don't fight that click. Instead, every time the surface tree page finishes
+// loading (fresh load or SPA navigation) with the sidebar collapsed, we treat
+// that as the trigger to show the flyout automatically.
+const syncSurfaceTreeFlyout = () => {
+    const sidebar = window.Alpine?.store?.('sidebar');
+    const flyout = document.getElementById('surface-tree-flyout');
+    const isDesktop = window.innerWidth >= desktopSidebarBreakpoint;
+
+    if (flyout && isDesktop && !sidebar?.isOpen && !surfaceTreeFlyoutDismissed) {
+        openSurfaceTreeFlyout();
+
+        return;
+    }
+
     document.documentElement.classList.remove(surfaceTreeFlyoutOpenClass);
 };
 
@@ -98,25 +128,6 @@ const initSurfaceTreeFlyout = () => {
     }
 
     document.__oloSurfaceTreeFlyoutInitialized = true;
-
-    document.addEventListener('click', (event) => {
-        const navItem = event.target.closest('[data-surface-tree-nav-item] a');
-
-        if (!navItem) {
-            return;
-        }
-
-        const sidebar = window.Alpine?.store?.('sidebar');
-        const flyout = document.getElementById('surface-tree-flyout');
-        const isDesktop = window.innerWidth >= desktopSidebarBreakpoint;
-
-        if (!flyout || !isDesktop || sidebar?.isOpen) {
-            return;
-        }
-
-        event.preventDefault();
-        document.documentElement.classList.toggle(surfaceTreeFlyoutOpenClass);
-    });
 
     document.addEventListener('click', (event) => {
         if (!event.target.closest('[data-surface-tree-flyout-close]')) {
@@ -152,7 +163,8 @@ const initializeApp = () => {
     mountSurfaceTreeFilterSelect();
     mountSurfaceTreeSidebar();
     initSurfaceTreeFlyout();
-    closeSurfaceTreeFlyout();
+    surfaceTreeFlyoutDismissed = false;
+    syncSurfaceTreeFlyout();
 };
 
 document.addEventListener('alpine:init', scheduleFilamentSidebarDefaults);
