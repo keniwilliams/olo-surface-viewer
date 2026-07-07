@@ -156,6 +156,26 @@ const initSurfaceTreeFlyout = () => {
     });
 };
 
+// The page top bar is sticky at top-16 (64px, under the app topbar). Once it
+// pins there, its top edge crosses the 65px viewport line and the
+// intersection ratio drops below 1 — that is the "stuck" signal.
+const watchPageTopBarStuckState = () => {
+    const header = document.querySelector('.fi-header');
+
+    if (!header || header.__oloStuckWatcherAttached) {
+        return;
+    }
+
+    header.__oloStuckWatcherAttached = true;
+
+    new IntersectionObserver(
+        ([entry]) => {
+            header.classList.toggle('fi-header-stuck', entry.intersectionRatio < 1);
+        },
+        { rootMargin: '-65px 0px 0px 0px', threshold: [1] },
+    ).observe(header);
+};
+
 const initializeApp = () => {
     scheduleFilamentSidebarDefaults();
     mountObservationCockpit();
@@ -163,6 +183,7 @@ const initializeApp = () => {
     mountSurfaceTreeFilterSelect();
     mountSurfaceTreeSidebar();
     initSurfaceTreeFlyout();
+    watchPageTopBarStuckState();
     surfaceTreeFlyoutDismissed = false;
     syncSurfaceTreeFlyout();
 };

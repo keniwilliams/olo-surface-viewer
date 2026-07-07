@@ -110,8 +110,14 @@
 .fi-page{
     @apply flex flex-1 flex-col;
 }
+/* Transparent column: the .fi-header top bar sits on top, the .fi-page-main
+   panel fills the rest. mt-5 keeps the bar level with the sidebar nav. */
 .fi-page-header-main-ctn{
-    @apply flex-1 rounded-xl p-3 mt-5 mb-2 ml-2 bg-olo-bg-color-main-content ring-1 ring-black/10;
+    @apply flex-1 gap-y-0 p-0 mt-5 mb-2 ml-2;
+}
+/* Page body panel; sits flush under the breadcrumbs/actions top bar. */
+.fi-page-main{
+    @apply flex-1 rounded-b-xl p-3 bg-olo-bg-color-main-content ring-1 ring-black/10;
 }
 
 @media (min-width: 1024px) {
@@ -180,10 +186,26 @@
     @apply hidden;
 }
 
+/* Shared page top bar: breadcrumbs on the left, page filters/actions on the
+   right. Same surface as the sidebar nav. */
 .fi-header {
+    /* top-16 pins it directly below the sticky 4rem app topbar. */
+    /* Border instead of ring so the bottom edge can stay open toward the page panel. */
+    @apply sticky top-16 z-10 rounded-t-xl px-4 py-2.5 bg-olo-sidenav-bg border border-b-0 border-black/50 transition-[border-radius] duration-150;
 
+    /* Applied from app.js while the bar is pinned under the app topbar. */
+    &.fi-header-stuck {
+        @apply rounded-t-none;
+    }
+
+    & .fi-breadcrumbs {
+        @apply mb-0;
+    }
+
+    &.fi-header-has-breadcrumbs .fi-header-actions-ctn {
+        @apply sm:mt-0;
+    }
 }
-
 
 .fi-breadcrumbs {
     margin: 0;
