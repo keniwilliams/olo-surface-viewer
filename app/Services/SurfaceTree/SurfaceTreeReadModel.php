@@ -88,7 +88,8 @@ class SurfaceTreeReadModel
             return $this->emailTree->children($nodeKey, $fromDepth, $depthWindow);
         }
 
-        if (in_array($nodeKey, ['domain:dreamstate', 'domain:camera_lens'], true)) {
+        if (in_array($nodeKey, ['domain:dreamstate', 'domain:camera_lens'], true)
+            || str_starts_with($nodeKey, 'folder:camera_lens:')) {
             return $this->domainImpressions->children($nodeKey, $fromDepth, $depthWindow);
         }
 
@@ -113,7 +114,15 @@ class SurfaceTreeReadModel
             return 1;
         }
 
+        if (str_starts_with($nodeKey, 'folder:camera_lens:')) {
+            return 1;
+        }
+
         if (str_starts_with($nodeKey, 'impression:')) {
+            return 2;
+        }
+
+        if (str_starts_with($nodeKey, 'record:camera_lens_telemetry:')) {
             return 2;
         }
 

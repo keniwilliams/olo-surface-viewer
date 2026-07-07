@@ -9,6 +9,7 @@ use App\Services\SurfaceTree\EmailTreeTraverser;
 use App\Services\SurfaceTree\FilesystemTreeTraverser;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -171,49 +172,121 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertNull($traverser->rawCorpus('missing-uuid'));
     }
 
-    public function test_domain_traverser_lists_impressions_for_dreamstate_and_camera_lens(): void
+    public function test_domain_traverser_lists_dreamstate_impressions_from_the_dedicated_feed(): void
     {
         $this->createDreamstateFeedTable();
 
         DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
-            $this->dreamstateRow('dream-old', null, domain: 'dreamstate', observedAt: '2026-07-04 12:00:00'),
-            $this->dreamstateRow('dream-new', null, domain: 'dreamstate', observedAt: '2026-07-05 12:00:00'),
-            $this->dreamstateRow('lens-uuid', null, domain: 'camera_lens'),
-            $this->dreamstateRow('fs-only', 'D:\\Projects\\notes.md', domain: 'filesystem'),
+            $this->dreamstateRow('dream-old', null, observedAt: '2026-07-04 12:00:00'),
+            $this->dreamstateRow('dream-new', null, observedAt: '2026-07-05 12:00:00'),
         ]);
 
-        $traverser = app(DomainImpressionsTraverser::class);
+        $dreamstate = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3);
 
-        $dreamstate = $traverser->children('domain:dreamstate', 0, 3);
         $this->assertSame(['impression:dream-new', 'impression:dream-old'], array_map(fn ($node) => $node->key, $dreamstate));
         $this->assertSame('impression', $dreamstate[0]->type);
         $this->assertSame('dreamstate', $dreamstate[0]->domain);
         $this->assertSame('dream-new', $dreamstate[0]->impressionId);
         $this->assertSame('/impressions/dream-new', $dreamstate[0]->href);
         $this->assertSame('file', $dreamstate[0]->meta['kind']);
-
-        $cameraLens = $traverser->children('domain:camera_lens', 0, 3);
-        $this->assertSame(['impression:lens-uuid'], array_map(fn ($node) => $node->key, $cameraLens));
-        $this->assertSame('camera_lens', $cameraLens[0]->domain);
-
-        $this->assertSame([], $traverser->children('domain:filesystem', 0, 3));
     }
 
-    public function test_domain_traverser_returns_empty_when_source_has_no_domain_column(): void
+    public function test_domain_traverser_splits_camera_lens_into_scenes_and_telemetry_folders(): void
     {
-        Schema::connection('impressions')->drop('sensemade_impressions');
-        Schema::connection('impressions')->create('sensemade_impressions', function ($table): void {
-            $table->id();
-            $table->string('impression_id');
-            $table->timestampTz('observed_at')->nullable();
-        });
+        $folders = app(DomainImpressionsTraverser::class)->children('domain:camera_lens', 0, 3);
 
-        DB::connection('impressions')->table('sensemade_impressions')->insert([
-            'impression_id' => 'no-domain-uuid',
-            'observed_at' => '2026-07-05 12:00:00',
+        $this->assertSame(
+            ['folder:camera_lens:scenes', 'folder:camera_lens:telemetry'],
+            array_map(fn ($node) => $node->key, $folders),
+        );
+        $this->assertSame(['Scene Payloads', 'Telemetry'], array_map(fn ($node) => $node->label, $folders));
+        $this->assertSame(['folder', 'folder'], array_map(fn ($node) => $node->type, $folders));
+        $this->assertTrue($folders[0]->hasChildren);
+        $this->assertTrue($folders[1]->hasChildren);
+
+        $this->assertSame([], app(DomainImpressionsTraverser::class)->children('domain:filesystem', 0, 3));
+    }
+
+    public function test_domain_traverser_lists_camera_lens_scene_payloads_from_the_dedicated_table(): void
+    {
+        $this->createCameraLensScenePayloadsTable();
+
+        DB::connection('impressions')->table('camera_lens_scene_payloads')->insert([
+            $this->cameraLensRow('lens-uuid'),
         ]);
 
-        $this->assertSame([], app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3));
+        $cameraLens = app(DomainImpressionsTraverser::class)->children('folder:camera_lens:scenes', 1, 3);
+
+        $this->assertSame(['impression:lens-uuid'], array_map(fn ($node) => $node->key, $cameraLens));
+        $this->assertSame('impression', $cameraLens[0]->type);
+        $this->assertSame('camera_lens', $cameraLens[0]->domain);
+        $this->assertSame('lens-uuid', $cameraLens[0]->impressionId);
+        $this->assertSame('/impressions/lens-uuid', $cameraLens[0]->href);
+        $this->assertSame('camera_lens_scene', $cameraLens[0]->meta['kind']);
+        $this->assertSame('olo-camera-lens.scene.v1', $cameraLens[0]->meta['schema']);
+    }
+
+    public function test_domain_traverser_returns_empty_when_camera_lens_scene_table_does_not_exist(): void
+    {
+        $this->assertSame([], app(DomainImpressionsTraverser::class)->children('folder:camera_lens:scenes', 1, 3));
+    }
+
+    public function test_domain_traverser_lists_camera_lens_telemetry_from_loki(): void
+    {
+        Http::fake([
+            '*/loki/api/v1/query_range*' => Http::response([
+                'status' => 'success',
+                'data' => [
+                    'resultType' => 'streams',
+                    'result' => [
+                        [
+                            'stream' => ['container' => '/olo-nats-tap'],
+                            'values' => [
+                                [
+                                    '1751702400000000000',
+                                    json_encode([
+                                        'event' => 'nats.message',
+                                        'subject' => 'olo.camera_lens.runtime.event',
+                                        'correlation_id' => 'camera-lens:abc',
+                                        'payload' => [
+                                            'event' => 'camera_lens.journey.completed',
+                                            'timestamp' => '2026-07-05T08:00:00Z',
+                                            'organism' => 'camera_lens',
+                                            'final_status' => 'published',
+                                            'error' => null,
+                                            'decision' => 'go',
+                                            'reason' => 'scene energy exceeded configured wobble band',
+                                        ],
+                                    ], JSON_THROW_ON_ERROR),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $telemetry = app(DomainImpressionsTraverser::class)->children('folder:camera_lens:telemetry', 1, 3);
+
+        $this->assertCount(1, $telemetry);
+        $this->assertSame('record', $telemetry[0]->type);
+        $this->assertSame('camera_lens', $telemetry[0]->domain);
+        $this->assertNull($telemetry[0]->href);
+        $this->assertSame('camera_lens.journey.completed', $telemetry[0]->label);
+        $this->assertSame('runtime_event', $telemetry[0]->relation);
+        $this->assertSame('published', $telemetry[0]->meta['final_status']);
+        $this->assertSame('go', $telemetry[0]->meta['decision']);
+        $this->assertSame('scene energy exceeded configured wobble band', $telemetry[0]->meta['reason']);
+        $this->assertSame('camera-lens:abc', $telemetry[0]->meta['correlation_id']);
+    }
+
+    public function test_domain_traverser_returns_empty_telemetry_when_loki_is_unreachable(): void
+    {
+        Http::fake([
+            '*/loki/api/v1/query_range*' => Http::response([], 500),
+        ]);
+
+        $this->assertSame([], app(DomainImpressionsTraverser::class)->children('folder:camera_lens:telemetry', 1, 3));
     }
 
     public function test_email_traverser_groups_email_records_by_sender_and_exposes_useful_meta(): void
@@ -500,6 +573,35 @@ class SurfaceTreeTraverserTest extends TestCase
             $table->text('raw_corpus')->nullable();
             $table->timestampTz('observed_at')->nullable();
         });
+    }
+
+    private function createCameraLensScenePayloadsTable(): void
+    {
+        Schema::connection('impressions')->create('camera_lens_scene_payloads', function ($table): void {
+            $table->string('housed_source_id')->primary();
+            $table->string('source_kind');
+            $table->string('schema');
+            $table->timestampTz('observed_at')->nullable();
+            $table->text('raw_corpus')->nullable();
+            $table->string('raw_corpus_encoding')->nullable();
+            $table->timestampTz('created_at')->nullable();
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function cameraLensRow(string $housedSourceId, string $observedAt = '2026-07-05 12:00:00'): array
+    {
+        return [
+            'housed_source_id' => $housedSourceId,
+            'source_kind' => 'camera_lens_scene',
+            'schema' => 'olo-camera-lens.scene.v1',
+            'observed_at' => $observedAt,
+            'raw_corpus' => null,
+            'raw_corpus_encoding' => 'utf8',
+            'created_at' => $observedAt,
+        ];
     }
 
     private function createEmailImpressionsTable(): void

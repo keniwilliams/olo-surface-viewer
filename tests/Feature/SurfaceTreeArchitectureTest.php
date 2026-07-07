@@ -72,17 +72,33 @@ class SurfaceTreeArchitectureTest extends TestCase
         $this->assertStringNotContainsString('->table(', $traverser);
         $this->assertStringNotContainsString('impressions_dreamstate_feed', $traverser);
         $this->assertStringNotContainsString('sensemade_impressions', $traverser);
+        $this->assertStringNotContainsString('Http::', $traverser);
         $this->assertStringContainsString('DomainImpressionsFeed', $traverser);
+        $this->assertStringContainsString('CameraLensTelemetryFeed', $traverser);
+    }
+
+    public function test_camera_lens_telemetry_feed_reads_through_http_only(): void
+    {
+        $feed = File::get(app_path('Services/SurfaceTree/CameraLensTelemetryFeed.php'));
+
+        $this->assertStringContainsString('use Illuminate\Support\Facades\Http;', $feed);
+        $this->assertStringContainsString('Http::baseUrl(', $feed);
+        $this->assertStringContainsString("config('services.loki.base_url')", $feed);
+        $this->assertStringNotContainsString('DB::connection', $feed);
+        $this->assertStringNotContainsString('->table(', $feed);
+        $this->assertStringNotContainsString('Model', $feed);
     }
 
     public function test_domain_impressions_feed_reads_through_read_only_eloquent_models(): void
     {
         $feed = File::get(app_path('Services/SurfaceTree/DomainImpressionsFeed.php'));
 
+        $this->assertStringContainsString('use App\Models\Impressions\CameraLensScenePayload;', $feed);
         $this->assertStringContainsString('use App\Models\Impressions\ImpressionDreamstateFeed;', $feed);
         $this->assertStringContainsString('use App\Models\Impressions\SensemadeImpression;', $feed);
         $this->assertStringContainsString('use App\Models\Impressions\Impression;', $feed);
         $this->assertStringContainsString('ImpressionDreamstateFeed::class', $feed);
+        $this->assertStringContainsString('CameraLensScenePayload::class', $feed);
         $this->assertStringContainsString('$modelClass::query()', $feed);
         $this->assertStringNotContainsString('DB::connection', $feed);
         $this->assertStringNotContainsString('->table(', $feed);
@@ -94,6 +110,7 @@ class SurfaceTreeArchitectureTest extends TestCase
             'Impressions/ImpressionDreamstateFeed',
             'Impressions/SensemadeImpression',
             'Impressions/Impression',
+            'Impressions/CameraLensScenePayload',
             'Sidecar/Email',
             'Sidecar/EmailMessage',
             'Sidecar/EmailSync',
