@@ -5,7 +5,7 @@
 
         <ol v-else>
             <SurfaceTreeNode
-                v-for="node in rootNodes"
+                v-for="node in visibleRootNodes"
                 :key="node.key"
                 :node="node"
                 :children-by-key="childrenByKey"
@@ -13,6 +13,7 @@
                 :loading-node-keys="loadingNodeKeys"
                 :node-errors="nodeErrors"
                 :selected-node-key="selectedNodeKey"
+                :email-filter-mode="emailFilterMode"
                 @toggle="toggleNode"
                 @load-deeper="loadDeeper"
                 @select="selectNode"
@@ -22,9 +23,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { emailFilterChangedEventName, nodeMatchesEmailFilter } from './emailFilters';
 import SurfaceTreeNodeComponent from './SurfaceTreeNode.vue';
-import type { CachedSurfaceTreeChildren, SurfaceTreeNode } from './types';
+import type { CachedSurfaceTreeChildren, EmailFilterChangedEvent, EmailFilterMode, SurfaceTreeNode } from './types';
 
 const SurfaceTreeNode = SurfaceTreeNodeComponent;
 const depthWindow = 3;
@@ -48,10 +50,26 @@ const nodeErrors = ref<Record<string, string>>({});
 const isLoadingRoots = ref(false);
 const rootError = ref<string | null>(null);
 const selectedNodeKey = ref<string | null>(null);
+const emailFilterMode = ref<EmailFilterMode>('all');
+
+const visibleRootNodes = computed(() => rootNodes.value.filter((node) => nodeMatchesEmailFilter(node, emailFilterMode.value)));
 
 onMounted(() => {
+    window.addEventListener(emailFilterChangedEventName, handleEmailFilterChanged);
     fetchRoots();
 });
+
+onBeforeUnmount(() => {
+    window.removeEventListener(emailFilterChangedEventName, handleEmailFilterChanged);
+});
+
+const handleEmailFilterChanged = (event: Event) => {
+    const mode = (event as EmailFilterChangedEvent).detail?.mode;
+
+    if (mode === 'all' || mode === 'sensemade' || mode === 'non_sensemade') {
+        emailFilterMode.value = mode;
+    }
+};
 
 const toggleNode = async (node: SurfaceTreeNode) => {
     if (!node.has_children) {
@@ -165,6 +183,7 @@ async function fetchSurfaceTreeJson(url: string): Promise<{ data: SurfaceTreeNod
     const response = await fetch(url, {
         headers: {
             Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
         },
     });
 

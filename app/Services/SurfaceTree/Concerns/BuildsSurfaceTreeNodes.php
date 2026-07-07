@@ -62,6 +62,31 @@ trait BuildsSurfaceTreeNodes
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    private function recordNode(
+        string $key,
+        string $label,
+        string $domain,
+        int $depth,
+        ?string $relation = null,
+        array $meta = [],
+    ): SurfaceTreeNode {
+        return new SurfaceTreeNode(
+            key: $key,
+            label: $label,
+            type: 'record',
+            domain: $domain,
+            impressionId: null,
+            relation: $relation,
+            depth: $depth,
+            hasChildren: false,
+            isTerminalDepth: false,
+            href: null,
+            meta: array_filter($meta, fn (mixed $value): bool => $value !== null && $value !== ''),
+        );
+    }
     private function encodeKeyPart(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
@@ -110,3 +135,4 @@ trait BuildsSurfaceTreeNodes
         return $depth >= $fromDepth + $depthWindow;
     }
 }
+

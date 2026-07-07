@@ -23,6 +23,50 @@
     font-size: 0.875rem;
 }
 
+.surface-tree .surface-tree__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.75rem;
+}
+
+.surface-tree .surface-tree__filter-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+}
+
+.surface-tree .surface-tree__filter-icon {
+    width: 1rem;
+    height: 1rem;
+    opacity: 0.75;
+}
+
+.surface-tree .surface-tree__filter-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linejoin: round;
+}
+
+.surface-tree .surface-tree__filter-label {
+    opacity: 0.65;
+}
+
+.surface-tree .surface-tree__filter-select {
+    border: 1px solid currentColor;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: inherit;
+    padding: 0.25rem 1.75rem 0.25rem 0.5rem;
+    & option{
+        @apply bg-gray-800;
+    }
+
+}
+
 .surface-tree .surface-tree__layout {
     display: grid;
     grid-template-columns: minmax(280px, 420px) 1fr;
@@ -120,6 +164,31 @@
     margin: 0;
     opacity: 0.65;
 }
+.surface-tree .surface-tree__email-sections {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.surface-tree .surface-tree__email-list {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.surface-tree .surface-tree__email-body {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.surface-tree .surface-tree__email-body p {
+    margin: 0 0 0.75rem;
+}
+
+.surface-tree .surface-tree__email-body p:last-child {
+    margin-bottom: 0;
+}
 
 .surface-tree .surface-tree__corpus-body {
 
@@ -211,5 +280,6 @@
     }
 
 }
+
 
 

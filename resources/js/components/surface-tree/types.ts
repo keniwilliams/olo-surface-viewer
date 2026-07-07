@@ -13,14 +13,21 @@ export type SurfaceTreeNode = {
 };
 
 export type SurfaceMainContentState = {
-    mode: 'empty' | 'impression_card';
+    mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card';
     selectedNodeKey?: string | null;
     impression_id?: string | null;
     payload?: Record<string, unknown>;
 };
+
+export type EmailFilterMode = 'all' | 'sensemade' | 'non_sensemade';
+
+export type EmailFilterChangedEvent = CustomEvent<{
+    mode: EmailFilterMode;
+}>;
 
 export type CachedSurfaceTreeChildren = {
     cachedAt: string;
     expiresAt: string;
     children: SurfaceTreeNode[];
 };
+

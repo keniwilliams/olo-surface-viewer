@@ -17,6 +17,10 @@ class EmailSync extends Model
 
     protected $table = 'email_syncs';
 
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
     public $timestamps = false;
 
     protected $guarded = [];

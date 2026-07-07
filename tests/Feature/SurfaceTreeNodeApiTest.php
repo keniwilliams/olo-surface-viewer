@@ -15,6 +15,7 @@ class SurfaceTreeNodeApiTest extends TestCase
         $this->configureSqliteOrgan('impressions');
         $this->configureSqliteOrgan('sidecar');
         $this->createImpressionsTable();
+        $this->createEmailImpressionsTable();
         $this->createSidecarEmailsTable();
         $this->seedSurfaceTreeRecords();
     }
@@ -82,7 +83,7 @@ class SurfaceTreeNodeApiTest extends TestCase
             ->assertJsonPath('data.0.meta.kind', 'file');
     }
 
-    public function test_email_children_endpoint_returns_sender_and_impression_nodes(): void
+    public function test_email_children_endpoint_returns_sender_and_email_record_nodes(): void
     {
         $senderChildren = $this->getJson('/surface-tree/nodes/domain:email/children?depth_window=3')
             ->assertOk()
@@ -91,19 +92,35 @@ class SurfaceTreeNodeApiTest extends TestCase
             ->assertJsonPath('data.0.type', 'folder')
             ->assertJsonPath('data.0.domain', 'email')
             ->assertJsonPath('data.0.relation', 'from_sender')
+            ->assertJsonPath('data.0.meta.sender', 'sender@example.com')
+            ->assertJsonPath('data.0.meta.message_count', 1)
+            ->assertJsonPath('data.0.meta.latest_subject', 'Sidecar subject')
+            ->assertJsonPath('data.0.meta.latest_received_at', '2026-07-05 11:58:00')
+            ->assertJsonPath('data.0.meta.latest_source_ref', 'message-1')
+            ->assertJsonPath('data.0.meta.latest_human_summary', 'Impressions human summary.')
             ->json('data');
 
         $this->getJson($this->childrenUrl($senderChildren[0]['key'], 3))
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.key', 'impression:email-uuid')
-            ->assertJsonPath('data.0.type', 'impression')
+            ->assertJsonPath('data.0.type', 'record')
             ->assertJsonPath('data.0.domain', 'email')
-            ->assertJsonPath('data.0.impression_id', 'email-uuid')
-            ->assertJsonPath('data.0.href', '/impressions/email-uuid')
+            ->assertJsonPath('data.0.impression_id', null)
+            ->assertJsonPath('data.0.href', null)
+            ->assertJsonPath('data.0.relation', 'email_listing')
+            ->assertJsonPath('data.0.label', 'Sidecar subject')
             ->assertJsonPath('data.0.meta.source_ref', 'message-1')
+            ->assertJsonPath('data.0.meta.subject', 'Sidecar subject')
             ->assertJsonPath('data.0.meta.sender', 'sender@example.com')
-            ->assertJsonPath('data.0.meta.thread_id', 'thread-1');
+            ->assertJsonPath('data.0.meta.thread_id', 'thread-1')
+            ->assertJsonPath('data.0.meta.related_impression_id', 'email-impression-uuid')
+            ->assertJsonPath('data.0.meta.received_at', '2026-07-05 11:58:00')
+            ->assertJsonPath('data.0.meta.body_preview', 'Short preview.')
+            ->assertJsonPath('data.0.meta.email_body', 'Full normalised email body.')
+            ->assertJsonPath('data.0.meta.human_summary', 'Impressions human summary.')
+            ->assertJsonPath('data.0.meta.sensemade_text', 'Impressions sensemade text.')
+            ->assertJsonPath('data.0.meta.why_it_matters', 'This affects the current work.')
+            ->assertJsonPath('data.0.meta.recommended_next_step', 'Reply with the requested detail.');
     }
 
     public function test_corpus_endpoint_returns_raw_corpus_for_impression(): void
@@ -201,7 +218,25 @@ class SurfaceTreeNodeApiTest extends TestCase
             $table->string('sender')->nullable();
             $table->string('subject')->nullable();
             $table->string('status')->nullable();
+            $table->text('body_preview')->nullable();
+            $table->text('normalised_body')->nullable();
+            $table->text('human_summary')->nullable();
+            $table->text('sensemade_text')->nullable();
+            $table->text('why_it_matters')->nullable();
+            $table->text('recommended_next_step')->nullable();
             $table->timestampTz('received_at')->nullable();
+        });
+    }
+
+    private function createEmailImpressionsTable(): void
+    {
+        Schema::connection('impressions')->create('email_impressions', function ($table): void {
+            $table->string('impression_id')->primary();
+            $table->string('source_ref');
+            $table->text('email')->nullable();
+            $table->text('state')->nullable();
+            $table->timestampTz('created_at')->nullable();
+            $table->timestampTz('updated_at')->nullable();
         });
     }
 
@@ -238,7 +273,30 @@ class SurfaceTreeNodeApiTest extends TestCase
             'sender' => 'sender@example.com',
             'subject' => 'Sidecar subject',
             'status' => 'synced',
+            'body_preview' => 'Short preview.',
+            'normalised_body' => 'Full normalised email body.',
+            'human_summary' => 'Human-readable summary.',
+            'sensemade_text' => 'Sensemade interpretation.',
+            'why_it_matters' => 'This affects the current work.',
+            'recommended_next_step' => 'Reply with the requested detail.',
             'received_at' => '2026-07-05 11:58:00',
+        ]);
+
+        DB::connection('impressions')->table('email_impressions')->insert([
+            'impression_id' => 'email-impression-uuid',
+            'source_ref' => 'outlook:message-1',
+            'email' => json_encode([
+                'message_id' => 'message-1',
+                'source_ref' => 'outlook:message-1',
+            ], JSON_THROW_ON_ERROR),
+            'state' => json_encode([
+                'sensemade_result' => [
+                    'human_summary' => 'Impressions human summary.',
+                    'sensemade_text' => 'Impressions sensemade text.',
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'created_at' => '2026-07-05 12:00:00',
+            'updated_at' => '2026-07-05 12:01:00',
         ]);
     }
 
@@ -247,3 +305,4 @@ class SurfaceTreeNodeApiTest extends TestCase
         return '/surface-tree/nodes/'.rawurlencode($nodeKey).'/children?depth_window='.$depthWindow;
     }
 }
+

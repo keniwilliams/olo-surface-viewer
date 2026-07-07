@@ -10,6 +10,7 @@
         </dl>
 
         <section v-if="impressionId" class="surface-tree__corpus" aria-label="Raw corpus">
+            <h3 class="surface-tree__corpus-title">Raw corpus</h3>
             <p v-if="isLoadingCorpus" class="surface-tree__corpus-muted">Loading corpus...</p>
             <p v-else-if="corpusError" class="surface-tree__corpus-muted" role="alert">{{ corpusError }}</p>
             <p v-else-if="!compiledMarkdown" class="surface-tree__corpus-muted">No corpus available.</p>
@@ -85,6 +86,7 @@ async function fetchCorpus(id: string) {
         const response = await fetch(`/surface-tree/impressions/${encodeURIComponent(id)}/corpus`, {
             headers: {
                 Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
         });
 
@@ -166,3 +168,4 @@ function displayValue(value: unknown, fallback: string): string {
     return asString(value) ?? fallback;
 }
 </script>
+
