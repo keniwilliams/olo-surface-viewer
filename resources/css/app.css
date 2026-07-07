@@ -96,10 +96,22 @@
     }
 }
 .fi-sidebar-nav{
-    @apply rounded-xl pt-1 mt-5 mb-2 ml-2 bg-olo-sidenav-bg;
+    @apply rounded-r-xl pt-1 mt-5 mb-2 bg-olo-sidenav-bg ring-1 ring-black/50;
+}
+/* Filament cloaks .fi-main-ctn (opacity-0 until Alpine boots), which makes the
+   main content fade in on every wire:navigate page change. Keep it visible. */
+.fi-body.fi-body-has-sidebar-collapsible-on-desktop .fi-main-ctn,
+.fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop .fi-main-ctn {
+    @apply opacity-100;
+}
+.fi-main{
+    @apply flex flex-col;
+}
+.fi-page{
+    @apply flex flex-1 flex-col;
 }
 .fi-page-header-main-ctn{
-    @apply rounded-xl p-3 mt-5 mb-2 ml-2 bg-olo-bg-color-main-content;
+    @apply flex-1 rounded-xl p-3 mt-5 mb-2 ml-2 bg-olo-bg-color-main-content ring-1 ring-black/10;
 }
 
 @media (min-width: 1024px) {
@@ -141,7 +153,7 @@
         }
 
         & .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
-            @apply fixed rounded-xl inset-y-0 z-40 flex w-80 flex-col mt-7 shadow-xl ring-1 ring-white/10;
+            @apply fixed rounded-r-xl inset-y-0 z-40 flex w-80 flex-col mt-8 mb-5 shadow-xl ring-1 ring-black/50;
             left: var(--collapsed-sidebar-width);
             background-color: rgb(var(--surface-bg) / var(--surface-bg-alpha));
         }
@@ -167,6 +179,11 @@
 .surface-tree-flyout__header {
     @apply hidden;
 }
+
+.fi-header {
+
+}
+
 
 .fi-breadcrumbs {
     margin: 0;
