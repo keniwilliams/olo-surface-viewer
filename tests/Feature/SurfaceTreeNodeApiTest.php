@@ -39,7 +39,36 @@ class SurfaceTreeNodeApiTest extends TestCase
             ->assertJsonPath('data.0.meta', [])
             ->assertJsonPath('data.1.key', 'domain:email')
             ->assertJsonPath('data.2.key', 'domain:dreamstate')
-            ->assertJsonPath('data.3.key', 'domain:camera_lens');
+            ->assertJsonPath('data.2.has_children', true)
+            ->assertJsonPath('data.3.key', 'domain:camera_lens')
+            ->assertJsonPath('data.3.has_children', true);
+    }
+
+    public function test_children_endpoint_returns_dreamstate_impressions(): void
+    {
+        DB::connection('impressions')->table('sensemade_impressions')->insert([
+            'impression_id' => 'dream-uuid',
+            'domain' => 'dreamstate',
+            'label' => 'Dreamstate impression',
+            'kind' => 'dream',
+            'status' => 'observed',
+            'source_path' => null,
+            'source_ref' => null,
+            'thread_id' => null,
+            'observed_at' => '2026-07-05 12:05:00',
+        ]);
+
+        $this->getJson('/surface-tree/nodes/domain:dreamstate/children?depth_window=3')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.key', 'impression:dream-uuid')
+            ->assertJsonPath('data.0.label', 'Dreamstate impression')
+            ->assertJsonPath('data.0.type', 'impression')
+            ->assertJsonPath('data.0.domain', 'dreamstate')
+            ->assertJsonPath('data.0.impression_id', 'dream-uuid')
+            ->assertJsonPath('data.0.has_children', false)
+            ->assertJsonPath('data.0.href', '/impressions/dream-uuid')
+            ->assertJsonPath('data.0.meta.kind', 'dream');
     }
 
     public function test_children_endpoint_returns_normalised_child_nodes(): void

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Impressions\EmailImpression;
 use App\Models\Sidecar\Email;
+use App\Services\SurfaceTree\DomainImpressionsTraverser;
 use App\Services\SurfaceTree\EmailTreeTraverser;
 use App\Services\SurfaceTree\FilesystemTreeTraverser;
 use Illuminate\Support\Facades\DB;
@@ -168,6 +169,51 @@ class SurfaceTreeTraverserTest extends TestCase
 
         $this->assertSame('Full observed corpus text.', $traverser->rawCorpus('feed-uuid'));
         $this->assertNull($traverser->rawCorpus('missing-uuid'));
+    }
+
+    public function test_domain_traverser_lists_impressions_for_dreamstate_and_camera_lens(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-old', null, domain: 'dreamstate', observedAt: '2026-07-04 12:00:00'),
+            $this->dreamstateRow('dream-new', null, domain: 'dreamstate', observedAt: '2026-07-05 12:00:00'),
+            $this->dreamstateRow('lens-uuid', null, domain: 'camera_lens'),
+            $this->dreamstateRow('fs-only', 'D:\\Projects\\notes.md', domain: 'filesystem'),
+        ]);
+
+        $traverser = app(DomainImpressionsTraverser::class);
+
+        $dreamstate = $traverser->children('domain:dreamstate', 0, 3);
+        $this->assertSame(['impression:dream-new', 'impression:dream-old'], array_map(fn ($node) => $node->key, $dreamstate));
+        $this->assertSame('impression', $dreamstate[0]->type);
+        $this->assertSame('dreamstate', $dreamstate[0]->domain);
+        $this->assertSame('dream-new', $dreamstate[0]->impressionId);
+        $this->assertSame('/impressions/dream-new', $dreamstate[0]->href);
+        $this->assertSame('file', $dreamstate[0]->meta['kind']);
+
+        $cameraLens = $traverser->children('domain:camera_lens', 0, 3);
+        $this->assertSame(['impression:lens-uuid'], array_map(fn ($node) => $node->key, $cameraLens));
+        $this->assertSame('camera_lens', $cameraLens[0]->domain);
+
+        $this->assertSame([], $traverser->children('domain:filesystem', 0, 3));
+    }
+
+    public function test_domain_traverser_returns_empty_when_source_has_no_domain_column(): void
+    {
+        Schema::connection('impressions')->drop('sensemade_impressions');
+        Schema::connection('impressions')->create('sensemade_impressions', function ($table): void {
+            $table->id();
+            $table->string('impression_id');
+            $table->timestampTz('observed_at')->nullable();
+        });
+
+        DB::connection('impressions')->table('sensemade_impressions')->insert([
+            'impression_id' => 'no-domain-uuid',
+            'observed_at' => '2026-07-05 12:00:00',
+        ]);
+
+        $this->assertSame([], app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3));
     }
 
     public function test_email_traverser_groups_email_records_by_sender_and_exposes_useful_meta(): void

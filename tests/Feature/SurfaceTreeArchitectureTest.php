@@ -63,6 +63,31 @@ class SurfaceTreeArchitectureTest extends TestCase
         $this->assertStringNotContainsString('->table(', $feed);
     }
 
+    public function test_domain_impressions_traverser_builds_nodes_only(): void
+    {
+        $traverser = File::get(app_path('Services/SurfaceTree/DomainImpressionsTraverser.php'));
+
+        $this->assertStringNotContainsString('DB::connection', $traverser);
+        $this->assertStringNotContainsString('Schema::', $traverser);
+        $this->assertStringNotContainsString('->table(', $traverser);
+        $this->assertStringNotContainsString('impressions_dreamstate_feed', $traverser);
+        $this->assertStringNotContainsString('sensemade_impressions', $traverser);
+        $this->assertStringContainsString('DomainImpressionsFeed', $traverser);
+    }
+
+    public function test_domain_impressions_feed_reads_through_read_only_eloquent_models(): void
+    {
+        $feed = File::get(app_path('Services/SurfaceTree/DomainImpressionsFeed.php'));
+
+        $this->assertStringContainsString('use App\Models\Impressions\ImpressionDreamstateFeed;', $feed);
+        $this->assertStringContainsString('use App\Models\Impressions\SensemadeImpression;', $feed);
+        $this->assertStringContainsString('use App\Models\Impressions\Impression;', $feed);
+        $this->assertStringContainsString('ImpressionDreamstateFeed::class', $feed);
+        $this->assertStringContainsString('$modelClass::query()', $feed);
+        $this->assertStringNotContainsString('DB::connection', $feed);
+        $this->assertStringNotContainsString('->table(', $feed);
+    }
+
     public function test_surface_tree_models_are_read_only(): void
     {
         $models = [
