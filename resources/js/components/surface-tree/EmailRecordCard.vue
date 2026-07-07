@@ -1,5 +1,5 @@
 <template>
-    <article class="surface-tree__card" aria-label="Email record card">
+    <article class="surface-tree__email_card" aria-label="Email record card">
         <h2 class="surface-tree__card-title">{{ displayValue(label, 'Email') }}</h2>
 
         <dl class="surface-tree__details">
@@ -24,12 +24,18 @@
                 </div>
             </section>
 
+            <section v-if="sensemadeText" class="surface-tree__email-section">
+                <h3 class="surface-tree__corpus-title">sensemade text</h3>
+                <!-- Read-only rendered markdown; the sensemade text is never editable here. -->
+                <div class="surface-tree__corpus-body" v-html="compiledSensemadeText"></div>
+            </section>
+
             <section v-for="section in visibleSections" :key="section.label" class="surface-tree__email-section">
                 <h3 class="surface-tree__corpus-title">{{ section.label }}</h3>
                 <p class="surface-tree__email-body">{{ section.value }}</p>
             </section>
 
-            <p v-if="!bodyPreview && !emailBody && visibleSections.length === 0" class="surface-tree__corpus-muted">
+            <p v-if="!bodyPreview && !emailBody && !sensemadeText && visibleSections.length === 0" class="surface-tree__corpus-muted">
                 No email summary available.
             </p>
         </section>
@@ -38,6 +44,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { marked } from 'marked';
 import { formatDateTime } from '../../support/dateFormatter';
 import type { SurfaceMainContentState } from './types';
 
@@ -61,6 +68,14 @@ const bodyPreview = computed(() => asString(valueFromPayload(['body_preview', 'b
 const emailBody = computed(() => asString(valueFromPayload(['email_body', 'emailbody', 'normalised_body', 'normalized_body', 'body', 'body_text', 'text_body', 'plain_text', 'message_body', 'content'])));
 const formattedReceivedAt = computed(() => receivedAt.value ? formatDateTime(receivedAt.value) : null);
 const emailBodyParagraphs = computed(() => splitParagraphs(emailBody.value));
+const sensemadeText = computed(() => asString(valueFromPayload(['sensemade_text', 'sensemadeText'])));
+const compiledSensemadeText = computed(() => {
+    if (!sensemadeText.value) {
+        return null;
+    }
+
+    return marked.parse(sensemadeText.value, { async: false });
+});
 
 const visibleFields = computed(() => [
     { label: 'sender', value: asString(sender.value) },
@@ -69,7 +84,6 @@ const visibleFields = computed(() => [
 
 const visibleSections = computed(() => [
     { label: 'human summary', value: asString(valueFromPayload(['human_summary', 'humanSummary'])) },
-    { label: 'sensemade text', value: asString(valueFromPayload(['sensemade_text', 'sensemadeText'])) },
     { label: 'why it matters', value: asString(valueFromPayload(['why_it_matters', 'whyItMatters'])) },
     { label: 'recommended next step', value: asString(valueFromPayload(['recommended_next_step', 'recommendedNextStep'])) },
 ].filter((section) => section.value));

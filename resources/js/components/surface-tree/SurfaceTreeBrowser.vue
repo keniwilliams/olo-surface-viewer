@@ -1,21 +1,5 @@
 <template>
     <section class="surface-tree" aria-label="Surface tree browser">
-        <div class="surface-tree__toolbar" aria-label="Email display controls">
-            <label class="surface-tree__filter-control">
-                <span class="surface-tree__filter-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M4 5h16l-6 7v5l-4 2v-7L4 5z" />
-                    </svg>
-                </span>
-                <span class="surface-tree__filter-label">Filter</span>
-                <select v-model="emailFilterMode" class="surface-tree__filter-select" aria-label="Email filter">
-                    <option value="all">Show all</option>
-                    <option value="sensemade">Sensemade</option>
-                    <option value="non_sensemade">Non sensemade</option>
-                </select>
-            </label>
-        </div>
-
         <div class="surface-tree__main">
             <SurfaceTreeMainContentHost :state="mainContentState" :email-filter-mode="emailFilterMode" />
         </div>
@@ -23,10 +7,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { emailFilterChangedEventName, nodeMatchesEmailFilter } from './emailFilters';
 import SurfaceTreeMainContentHost from './SurfaceTreeMainContentHost.vue';
-import type { EmailFilterMode, SurfaceMainContentState, SurfaceTreeNode } from './types';
+import type { EmailFilterChangedEvent, EmailFilterMode, SurfaceMainContentState, SurfaceTreeNode } from './types';
 
 const mainContentState = ref<SurfaceMainContentState>({ mode: 'empty' });
 const emailFilterMode = ref<EmailFilterMode>('all');
@@ -146,8 +130,14 @@ const surfaceTreeNodeFromPayload = (payload: Record<string, unknown>): SurfaceTr
     };
 };
 
-watch(emailFilterMode, (mode) => {
-    window.dispatchEvent(new CustomEvent(emailFilterChangedEventName, { detail: { mode } }));
+const handleEmailFilterChanged = (event: Event) => {
+    const mode = (event as EmailFilterChangedEvent).detail?.mode;
+
+    if (mode !== 'all' && mode !== 'sensemade' && mode !== 'non_sensemade') {
+        return;
+    }
+
+    emailFilterMode.value = mode;
 
     if (selectedNode.value && !nodeMatchesEmailFilter(selectedNode.value, mode)) {
         mainContentState.value = {
@@ -156,15 +146,16 @@ watch(emailFilterMode, (mode) => {
             payload: nodePayload(selectedNode.value),
         };
     }
-});
+};
 
 onMounted(() => {
     window.addEventListener('olo:surface-tree:select', handleSurfaceTreeSelect);
-    window.dispatchEvent(new CustomEvent(emailFilterChangedEventName, { detail: { mode: emailFilterMode.value } }));
+    window.addEventListener(emailFilterChangedEventName, handleEmailFilterChanged);
 });
 
 onBeforeUnmount(() => {
     window.removeEventListener('olo:surface-tree:select', handleSurfaceTreeSelect);
+    window.removeEventListener(emailFilterChangedEventName, handleEmailFilterChanged);
 });
 </script>
 

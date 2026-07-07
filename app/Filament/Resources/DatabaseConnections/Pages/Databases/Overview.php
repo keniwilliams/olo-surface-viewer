@@ -17,6 +17,11 @@ class Overview extends Page
         return 'Database Overview';
     }
 
+    public function getHeading(): ?string
+    {
+        return null;
+    }
+
     public function getViewData(): array
     {
         return [

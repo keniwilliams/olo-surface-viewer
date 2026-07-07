@@ -19,37 +19,42 @@
     --text: var(--color-700);
 }
 
+.fi-header:has(.surface-tree-header-filter) > div {
+    @apply grid grid-cols-[1fr_auto] items-center gap-3 w-full;
+}
+
+.surface-tree-header-filter {
+    @apply inline-flex items-center justify-self-end;
+}
+
+.surface-tree__filter-control {
+    @apply inline-flex items-center gap-1.5 min-w-0;
+}
+
+.surface-tree__filter-icon {
+    @apply size-4 opacity-75;
+}
+
+.surface-tree__filter-icon svg {
+    @apply size-full fill-none stroke-current stroke-[1.75];
+    stroke-linejoin: round;
+}
+
+.surface-tree__filter-label {
+    @apply opacity-65;
+}
+
+.surface-tree__filter-select {
+    @apply border-0 rounded-md bg-transparent text-inherit py-1 pr-7 pl-2;
+    font-size: var(--text-sm);
+
+    & option {
+        @apply bg-gray-800;
+    }
+}
+
 .surface-tree {
     @apply text-sm;
-
-    & .surface-tree__toolbar {
-        @apply flex justify-end mb-3;
-    }
-
-    & .surface-tree__filter-control {
-        @apply inline-flex items-center gap-1.5 min-w-0;
-    }
-
-    & .surface-tree__filter-icon {
-        @apply size-4 opacity-75;
-    }
-
-    & .surface-tree__filter-icon svg {
-        @apply size-full fill-none stroke-current stroke-[1.75];
-        stroke-linejoin: round;
-    }
-
-    & .surface-tree__filter-label {
-        @apply opacity-65;
-    }
-
-    & .surface-tree__filter-select {
-        @apply border border-current rounded-md bg-transparent text-inherit py-1 pr-7 pl-2;
-
-        & option {
-            @apply bg-gray-800;
-        }
-    }
 
     & .surface-tree__layout {
         @apply grid grid-cols-[minmax(280px,420px)_1fr] gap-4;
@@ -136,7 +141,8 @@
     }
 
     & .surface-tree__email-body {
-        @apply m-0 whitespace-pre-wrap [overflow-wrap:anywhere];
+        @apply m-0 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-6 rounded-lg p-3;
+        background-color: var(--gray-900);
     }
 
     & .surface-tree__email-body p {
@@ -152,7 +158,7 @@
         background-color: var(--gray-900);
 
         & h1 {
-            @apply mt-4 mb-4 text-2xl font-bold leading-tight text-white;
+            @apply mt-4 mb-4 text-2xl font-bold leading-tight text-gray-100;
         }
 
         & h2 {

@@ -10,4 +10,9 @@ class Subconscious extends Page
     protected static string $resource = DatabaseConnectionResource::class;
 
     protected string $view = 'filament.resources.database-connections.pages.databases.subconscious';
+
+    public function getHeading(): ?string
+    {
+        return null;
+    }
 }
