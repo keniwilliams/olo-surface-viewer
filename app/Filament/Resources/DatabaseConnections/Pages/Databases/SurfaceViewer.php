@@ -10,4 +10,9 @@ class SurfaceViewer extends Page
     protected static string $resource = DatabaseConnectionResource::class;
 
     protected string $view = 'filament.resources.database-connections.pages.databases.surface-viewer';
+
+    public function getHeading(): ?string
+    {
+        return null;
+    }
 }

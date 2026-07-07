@@ -40,13 +40,13 @@ class SurfaceTreePageTest extends TestCase
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
         $sidebar = File::get(resource_path('js/components/surface-tree/SurfaceTreeSidebar.vue'));
+        $filterSelect = File::get(resource_path('js/components/surface-tree/SurfaceTreeFilterSelect.vue'));
 
         $this->assertStringContainsString("window.addEventListener('olo:surface-tree:select'", $browser);
         $this->assertStringContainsString("window.removeEventListener('olo:surface-tree:select'", $browser);
         $this->assertStringContainsString('SurfaceTreeMainContentHost', $browser);
-        $this->assertStringContainsString('surface-tree__toolbar', $browser);
         $this->assertStringContainsString('emailFilterMode', $browser);
-        $this->assertStringContainsString('value="non_sensemade"', $browser);
+        $this->assertStringContainsString('value="non_sensemade"', $filterSelect);
         $this->assertStringContainsString('nodeMatchesEmailFilter', $sidebar);
         $this->assertStringContainsString("mode === 'non_sensemade'", File::get(resource_path('js/components/surface-tree/emailFilters.ts')));
         $this->assertStringContainsString('olo:surface-tree:email-filter', File::get(resource_path('js/components/surface-tree/emailFilters.ts')));
@@ -74,6 +74,7 @@ class SurfaceTreePageTest extends TestCase
     public function test_surface_tree_components_include_readability_class_hooks(): void
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
+        $filterSelect = File::get(resource_path('js/components/surface-tree/SurfaceTreeFilterSelect.vue'));
         $treeNode = File::get(resource_path('js/components/surface-tree/SurfaceTreeNode.vue'));
         $impressionCard = File::get(resource_path('js/components/surface-tree/ImpressionCard.vue'));
         $emailRecordCard = File::get(resource_path('js/components/surface-tree/EmailRecordCard.vue'));
@@ -81,13 +82,17 @@ class SurfaceTreePageTest extends TestCase
 
         foreach ([
             'surface-tree',
-            'surface-tree__toolbar',
-            'surface-tree__filter-control',
-            'surface-tree__filter-icon',
-            'surface-tree__filter-select',
             'surface-tree__main',
         ] as $class) {
             $this->assertStringContainsString($class, $browser);
+        }
+
+        foreach ([
+            'surface-tree__filter-control',
+            'surface-tree__filter-icon',
+            'surface-tree__filter-select',
+        ] as $class) {
+            $this->assertStringContainsString($class, $filterSelect);
         }
 
         foreach ([
@@ -179,8 +184,8 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('& .surface-tree__email-list', $surfaceTreeCss);
         $this->assertStringContainsString('& .surface-tree__email-body', $surfaceTreeCss);
         $this->assertStringContainsString('& .surface-tree__email-body p', $surfaceTreeCss);
-        $this->assertStringContainsString('& .surface-tree__toolbar', $surfaceTreeCss);
-        $this->assertStringContainsString('& .surface-tree__filter-select', $surfaceTreeCss);
+        $this->assertStringContainsString('.surface-tree__filter-select', $surfaceTreeCss);
+        $this->assertStringContainsString('.surface-tree-header-filter', $surfaceTreeCss);
     }
 
     public function test_impression_card_lazy_loads_raw_corpus_as_read_only_markdown(): void

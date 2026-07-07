@@ -10,4 +10,9 @@ class Impressions extends Page
     protected static string $resource = DatabaseConnectionResource::class;
 
     protected string $view = 'filament.resources.database-connections.pages.databases.impressions';
+
+    public function getHeading(): ?string
+    {
+        return null;
+    }
 }

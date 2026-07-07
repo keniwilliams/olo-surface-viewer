@@ -11,6 +11,10 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
     --dark-text: var(--color-400);
+    --color-olo-text-color: var(--gray-300);
+    --color-olo-bg-color-main-content: oklch(0.193 0.045 243);
+    --color-olo-bg: var(--gray-800);
+    --color-olo-sidenav-bg: var(--gray-900);
     --danger-50: oklch(0.971 0.013 17.38);
     --danger-100: oklch(0.936 0.032 17.717);
     --danger-200: oklch(0.885 0.062 18.334);
@@ -80,36 +84,43 @@
 }
 
 .fi-body{
-    background-color: var(--gray-800);
+    @apply bg-olo-bg;
+
+    &:where(.dark, .dark *) {
+        @apply text-olo-text-color;
+    }
 }
 .fi-sidebar-nav{
-    @apply rounded-xl pt-1 mt-5 mb-2 ml-2;
-    background-color: var(--gray-900);
+    @apply rounded-xl pt-1 mt-5 mb-2 ml-2 bg-olo-sidenav-bg;
+}
+.fi-page-header-main-ctn{
+    @apply rounded-xl p-3 mt-5 mb-2 ml-2 bg-olo-bg-color-main-content;
 }
 
 @media (min-width: 1024px) {
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) {
-        & .fi-layout {
-            @apply grid grid-cols-[0rem_minmax(0,1fr)] transition-[grid-template-columns] duration-200 ease-out;
+    .fi-body.fi-body-has-sidebar-collapsible-on-desktop:not(.fi-body-has-top-navigation) {
+        & .fi-sidebar:not(.fi-sidebar-open) {
+            @apply w-(--collapsed-sidebar-width);
 
-            &:has(.fi-main-sidebar.fi-sidebar-open) {
-                @apply grid-cols-[var(--sidebar-width)_minmax(0,1fr)];
+            & .fi-sidebar-nav {
+                @apply px-2;
             }
-        }
 
-        & .fi-main-sidebar {
-            @apply sticky w-full min-w-0 overflow-hidden translate-x-0;
-        }
-
-        &.fi-body-has-topbar:not(.fi-body-has-top-navigation) .fi-main-sidebar {
-            @apply top-16 h-[calc(100dvh-4rem)];
+            & .fi-sidebar-item-btn,
+            & .fi-sidebar-group-btn,
+            & .fi-sidebar-group-dropdown-trigger-btn {
+                @apply justify-center gap-x-0 px-0;
+            }
         }
     }
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-layout {
-        transition: none;
+.fi-breadcrumbs {
+    margin: 0;
+    & ol {
+        & li {
+
+        }
     }
 }
 

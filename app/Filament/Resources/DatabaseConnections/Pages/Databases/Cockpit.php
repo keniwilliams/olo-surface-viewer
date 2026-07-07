@@ -15,4 +15,9 @@ class Cockpit extends Page
     {
         return 'Observation Cockpit';
     }
+
+    public function getHeading(): ?string
+    {
+        return null;
+    }
 }
