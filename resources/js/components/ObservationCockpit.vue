@@ -119,6 +119,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { formatDateTime as formatValue } from '../support/dateFormatter';
 
 const props = defineProps({
     organsUrl: {
@@ -262,17 +263,6 @@ function dropOn(targetKey) {
     }));
     draggedKey.value = null;
     persistClientState();
-}
-
-function formatValue(value) {
-    if (!value) {
-        return 'unknown'
-      }
-
-    return new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    }).format(new Date(value))
 }
 
 function activityKey(activity) {

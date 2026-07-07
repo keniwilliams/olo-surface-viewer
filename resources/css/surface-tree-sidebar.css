@@ -1,72 +1,50 @@
+@reference "./app.css";
+@reference "tailwindcss";
+
 .surface-tree--sidebar {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem 0.75rem;
-    overflow-x: hidden;
-}
+    @apply text-xs px-0 pt-1 pb-3 overflow-x-hidden;
 
-.surface-tree--sidebar ol,
-.surface-tree--sidebar .surface-tree__children {
-    list-style: none;
-    margin: 0;
-    padding-left: 0;
-}
+    & ol,
+    & .surface-tree__children {
+        @apply list-none m-0 pl-0;
+    }
 
-.surface-tree--sidebar .surface-tree__children {
-    margin-left: 0.5rem;
-    padding-left: 0.5rem;
-    border-left: 1px solid rgb(128 128 128 / 0.35);
-}
+    & .surface-tree__children {
+        @apply ml-2 pl-2 border-l border-gray-500/35;
+    }
 
-.surface-tree--sidebar .surface-tree__row {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.125rem 0;
-    min-width: 0;
-}
+    & .surface-tree__row {
+        @apply flex items-center gap-1 py-0.5 min-w-0;
+    }
 
-.surface-tree--sidebar .surface-tree__toggle,
-.surface-tree--sidebar .surface-tree__label {
-    border: 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font-size: inherit;
-}
+    & .surface-tree__toggle,
+    & .surface-tree__label {
+        @apply border-0 bg-transparent text-inherit cursor-pointer text-inherit;
+    }
 
-.surface-tree--sidebar .surface-tree__toggle,
-.surface-tree--sidebar .surface-tree__toggle-placeholder {
-    width: 1rem;
-    flex: none;
-    display: inline-block;
-}
+    & .surface-tree__toggle,
+    & .surface-tree__toggle-placeholder {
+        @apply w-4 flex-none inline-block;
+    }
 
-.surface-tree--sidebar .surface-tree__label {
-    display: flex;
-    align-items: baseline;
-    gap: 0.25rem;
-    min-width: 0;
-    flex: 1;
-    text-align: left;
-}
+    & .surface-tree__label {
+        @apply flex items-baseline gap-1 min-w-0 flex-1 text-left;
 
-.surface-tree--sidebar .surface-tree__label > span:first-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
+        & > span:first-child {
+            @apply overflow-hidden text-ellipsis whitespace-nowrap;
+        }
+    }
 
-.surface-tree--sidebar .surface-tree__badge,
-.surface-tree--sidebar .surface-tree__muted {
-    opacity: 0.65;
-}
+    & .surface-tree__badge,
+    & .surface-tree__muted {
+        @apply opacity-65;
+    }
 
-.surface-tree--sidebar .surface-tree__badge {
-    font-size: 0.625rem;
-    flex: none;
-}
+    & .surface-tree__badge {
+        @apply text-[0.625rem] flex-none;
+    }
 
-.surface-tree--sidebar .surface-tree__muted {
-    margin: 0;
-    padding: 0.125rem 0;
+    & .surface-tree__muted {
+        @apply m-0 py-0.5;
+    }
 }

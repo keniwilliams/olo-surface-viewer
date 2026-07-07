@@ -69,15 +69,11 @@ class SurfaceTreeSidebarTest extends TestCase
 
         $this->assertStringContainsString('resources/css/surface-tree-sidebar.css', $viteConfig);
         $this->assertStringContainsString('.surface-tree--sidebar', $css);
-        $this->assertStringContainsString('text-overflow: ellipsis;', $css);
+        $this->assertStringContainsString('text-ellipsis', $css);
         $this->assertStringNotContainsString('.fi-', $css);
-        $this->assertStringNotContainsString('@apply', $css);
-
-        foreach (explode("\n", $css) as $line) {
-            if (str_contains($line, '{') && str_contains(trim($line), '.')) {
-                $this->assertStringContainsString('.surface-tree--sidebar', $line);
-            }
-        }
+        $this->assertStringContainsString('@apply', $css);
+        $this->assertStringContainsString('& .surface-tree__children', $css);
+        $this->assertStringContainsString('& .surface-tree__label', $css);
     }
 
     public function test_sidebar_mount_target_renders_only_on_surface_viewer_page(): void

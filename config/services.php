@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'loki' => [
+        'base_url' => env('LOKI_BASE_URL', 'http://127.0.0.1:3100'),
+    ],
+
 ];

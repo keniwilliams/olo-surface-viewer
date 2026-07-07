@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Concerns\ReadOnlyEloquentBuilder;
+use App\Models\Impressions\EmailImpression;
 use App\Models\Impressions\Impression;
 use App\Models\Impressions\ImpressionDreamstateFeed;
 use App\Models\Impressions\SensemadeImpression;
@@ -39,6 +40,20 @@ class ReadOnlyImpressionsModelsTest extends TestCase
         $this->assertFalse($model->usesTimestamps());
     }
 
+    public function test_email_impression_model_configuration(): void
+    {
+        $model = new EmailImpression;
+
+        $this->assertSame('impressions', $model->getConnectionName());
+        $this->assertSame('email_impressions', $model->getTable());
+        $this->assertSame('impression_id', $model->getKeyName());
+        $this->assertFalse($model->getIncrementing());
+        $this->assertSame('string', $model->getKeyType());
+        $this->assertFalse($model->usesTimestamps());
+        $this->assertSame('array', $model->getCasts()['email']);
+        $this->assertSame('array', $model->getCasts()['state']);
+    }
+
     public function test_impression_model_configuration(): void
     {
         $model = new Impression;
@@ -67,6 +82,7 @@ class ReadOnlyImpressionsModelsTest extends TestCase
     public function test_read_only_models_use_the_read_only_builder(): void
     {
         $this->assertInstanceOf(ReadOnlyEloquentBuilder::class, ImpressionDreamstateFeed::query());
+        $this->assertInstanceOf(ReadOnlyEloquentBuilder::class, EmailImpression::query());
         $this->assertInstanceOf(ReadOnlyEloquentBuilder::class, SensemadeImpression::query());
         $this->assertInstanceOf(ReadOnlyEloquentBuilder::class, Impression::query());
         $this->assertInstanceOf(ReadOnlyEloquentBuilder::class, Email::query());
@@ -84,6 +100,7 @@ class ReadOnlyImpressionsModelsTest extends TestCase
             'push' => fn () => (new ImpressionDreamstateFeed)->push(),
             'destroy' => fn () => ImpressionDreamstateFeed::destroy('x'),
             'save on SensemadeImpression' => fn () => (new SensemadeImpression)->save(),
+            'save on EmailImpression' => fn () => (new EmailImpression)->save(),
             'save on Impression' => fn () => (new Impression)->save(),
             'save on Email' => fn () => (new Email)->save(),
             'delete on Email' => fn () => (new Email)->delete(),
@@ -115,6 +132,7 @@ class ReadOnlyImpressionsModelsTest extends TestCase
             'upsert' => fn () => ImpressionDreamstateFeed::query()->upsert([['impression_id' => 'x']], ['impression_id']),
             'updateOrInsert' => fn () => ImpressionDreamstateFeed::query()->updateOrInsert(['impression_id' => 'x']),
             'update on SensemadeImpression' => fn () => SensemadeImpression::query()->update(['kind' => 'x']),
+            'update on EmailImpression' => fn () => EmailImpression::query()->update(['state' => []]),
             'delete on Impression' => fn () => Impression::query()->delete(),
             'update on Email' => fn () => Email::query()->update(['subject' => 'x']),
             'delete on Email' => fn () => Email::query()->delete(),

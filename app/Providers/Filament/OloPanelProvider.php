@@ -33,8 +33,9 @@ class OloPanelProvider extends PanelProvider
             ->id('olo')
             ->path('olo')
             ->login()
+            ->spa()
             ->viteTheme('resources/css/app.css')
-            ->sidebarFullyCollapsibleOnDesktop()
+            ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth(Width::Full)
             ->renderHook(
                 PanelsRenderHook::SCRIPTS_AFTER,
@@ -44,6 +45,12 @@ class OloPanelProvider extends PanelProvider
                 PanelsRenderHook::SIDEBAR_NAV_END,
                 fn (): string => request()->routeIs('filament.olo.resources.database-connections.databases.surface-viewer')
                     ? view('filament.sidebar.surface-tree')->render()
+                    : '',
+            )
+            ->renderHook(
+                PanelsRenderHook::PAGE_HEADER_HEADING_BEFORE,
+                fn (): string => request()->routeIs('filament.olo.resources.database-connections.databases.surface-viewer')
+                    ? view('filament.header.surface-tree-filter')->render()
                     : '',
             )
             ->colors([
@@ -65,6 +72,7 @@ class OloPanelProvider extends PanelProvider
                     ->icon(Heroicon::OutlinedShare)
                     ->url(fn (): string => route('filament.olo.resources.database-connections.databases.surface-viewer'))
                     ->isActiveWhen(fn (): bool => request()->routeIs('filament.olo.resources.database-connections.databases.surface-viewer'))
+                    ->extraAttributes(['data-surface-tree-nav-item' => 'true'])
                     ->sort(2),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

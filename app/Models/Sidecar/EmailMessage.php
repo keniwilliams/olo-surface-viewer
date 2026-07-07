@@ -17,6 +17,10 @@ class EmailMessage extends Model
 
     protected $table = 'email_messages';
 
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
     public $timestamps = false;
 
     protected $guarded = [];

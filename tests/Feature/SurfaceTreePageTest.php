@@ -32,6 +32,7 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('fetchRoots();', $component);
         $this->assertStringContainsString('loadChildren(node)', $component);
         $this->assertStringContainsString('fetchSurfaceTreeJson(childrenUrl(node.key))', $component);
+        $this->assertStringContainsString("'X-Requested-With': 'XMLHttpRequest'", $component);
         $this->assertStringNotContainsString('impression:filesystem:first', $component);
     }
 
@@ -39,10 +40,16 @@ class SurfaceTreePageTest extends TestCase
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
         $sidebar = File::get(resource_path('js/components/surface-tree/SurfaceTreeSidebar.vue'));
+        $filterSelect = File::get(resource_path('js/components/surface-tree/SurfaceTreeFilterSelect.vue'));
 
         $this->assertStringContainsString("window.addEventListener('olo:surface-tree:select'", $browser);
         $this->assertStringContainsString("window.removeEventListener('olo:surface-tree:select'", $browser);
         $this->assertStringContainsString('SurfaceTreeMainContentHost', $browser);
+        $this->assertStringContainsString('emailFilterMode', $browser);
+        $this->assertStringContainsString('value="non_sensemade"', $filterSelect);
+        $this->assertStringContainsString('nodeMatchesEmailFilter', $sidebar);
+        $this->assertStringContainsString("mode === 'non_sensemade'", File::get(resource_path('js/components/surface-tree/emailFilters.ts')));
+        $this->assertStringContainsString('olo:surface-tree:email-filter', File::get(resource_path('js/components/surface-tree/emailFilters.ts')));
         $this->assertStringNotContainsString('SurfaceTreeNode.vue', $browser);
         $this->assertStringNotContainsString('fetchRoots', $browser);
         $this->assertStringNotContainsString('surface-tree__nav', $browser);
@@ -58,18 +65,34 @@ class SurfaceTreePageTest extends TestCase
 
         $this->assertStringNotContainsString('ImpressionCard', $treeNode);
         $this->assertStringNotContainsString('SurfaceTreeMainContentHost', $treeNode);
+        $this->assertStringContainsString("import EmailRecordCard from './EmailRecordCard.vue';", $mainContentHost);
+        $this->assertStringContainsString("import EmailSenderCard from './EmailSenderCard.vue';", $mainContentHost);
         $this->assertStringContainsString("import ImpressionCard from './ImpressionCard.vue';", $mainContentHost);
-        $this->assertStringContainsString("mode: 'empty' | 'impression_card';", $types);
+        $this->assertStringContainsString("mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card';", $types);
     }
 
     public function test_surface_tree_components_include_readability_class_hooks(): void
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
+        $filterSelect = File::get(resource_path('js/components/surface-tree/SurfaceTreeFilterSelect.vue'));
         $treeNode = File::get(resource_path('js/components/surface-tree/SurfaceTreeNode.vue'));
         $impressionCard = File::get(resource_path('js/components/surface-tree/ImpressionCard.vue'));
+        $emailRecordCard = File::get(resource_path('js/components/surface-tree/EmailRecordCard.vue'));
+        $emailSenderCard = File::get(resource_path('js/components/surface-tree/EmailSenderCard.vue'));
 
-        foreach (['surface-tree', 'surface-tree__main'] as $class) {
+        foreach ([
+            'surface-tree',
+            'surface-tree__main',
+        ] as $class) {
             $this->assertStringContainsString($class, $browser);
+        }
+
+        foreach ([
+            'surface-tree__filter-control',
+            'surface-tree__filter-icon',
+            'surface-tree__filter-select',
+        ] as $class) {
+            $this->assertStringContainsString($class, $filterSelect);
         }
 
         foreach ([
@@ -98,6 +121,71 @@ class SurfaceTreePageTest extends TestCase
         ] as $class) {
             $this->assertStringContainsString($class, $impressionCard);
         }
+
+        foreach ([
+            'surface-tree__card',
+            'surface-tree__card-title',
+            'surface-tree__details',
+            'surface-tree__email-sections',
+            'surface-tree__email-section',
+            'surface-tree__email-body',
+        ] as $class) {
+            $this->assertStringContainsString($class, $emailRecordCard);
+        }
+
+        foreach ([
+            'surface-tree__card',
+            'surface-tree__card-title',
+            'surface-tree__details',
+            'surface-tree__email-list',
+        ] as $class) {
+            $this->assertStringContainsString($class, $emailSenderCard);
+        }
+    }
+
+    public function test_email_record_card_renders_email_sensemaking_fields(): void
+    {
+        $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
+        $mainContentHost = File::get(resource_path('js/components/surface-tree/SurfaceTreeMainContentHost.vue'));
+        $emailRecordCard = File::get(resource_path('js/components/surface-tree/EmailRecordCard.vue'));
+        $emailSenderCard = File::get(resource_path('js/components/surface-tree/EmailSenderCard.vue'));
+        $surfaceTreeCss = File::get(resource_path('css/surface-tree.css'));
+
+        $this->assertStringContainsString("node.type === 'folder' && node.domain === 'email' && node.relation === 'from_sender'", $browser);
+        $this->assertStringContainsString("mode: 'email_sender_card'", $browser);
+        $this->assertStringContainsString("node.type === 'record' && node.domain === 'email' && node.relation === 'email_listing'", $browser);
+        $this->assertStringContainsString("mode: 'email_record_card'", $browser);
+        $this->assertStringContainsString("state.mode === 'email_sender_card'", $mainContentHost);
+        $this->assertStringContainsString("state.mode === 'email_record_card'", $mainContentHost);
+        $this->assertStringContainsString('/surface-tree/nodes/${encodeURIComponent(nodeKey)}/children?depth_window=3', $emailSenderCard);
+        $this->assertStringContainsString("'X-Requested-With': 'XMLHttpRequest'", $emailSenderCard);
+        $this->assertStringContainsString('EmailRecordCard', $emailSenderCard);
+        $this->assertStringContainsString('Loading emails...', $emailSenderCard);
+        $this->assertStringContainsString("import { formatDateTime } from '../../support/dateFormatter';", $emailSenderCard);
+        $this->assertStringContainsString('nodeMatchesEmailFilter', $emailSenderCard);
+        $this->assertStringContainsString('visibleMessages', $emailSenderCard);
+        $this->assertStringContainsString('No sensemade emails available.', $emailSenderCard);
+        $this->assertStringContainsString('No non sensemade emails available.', $emailSenderCard);
+        $this->assertStringContainsString('formattedLatestReceivedAt', $emailSenderCard);
+        $this->assertStringContainsString("import { formatDateTime } from '../../support/dateFormatter';", $emailRecordCard);
+        $this->assertStringContainsString('formattedReceivedAt', $emailRecordCard);
+        $this->assertStringContainsString('splitParagraphs(emailBody.value)', $emailRecordCard);
+        $this->assertStringContainsString('v-for="paragraph in emailBodyParagraphs"', $emailRecordCard);
+        $this->assertStringContainsString('email_body', $emailRecordCard);
+        $this->assertStringContainsString('normalised_body', $emailRecordCard);
+        $this->assertStringContainsString('body_preview', $emailRecordCard);
+        $this->assertStringContainsString('human_summary', $emailRecordCard);
+        $this->assertStringContainsString('sensemade_text', $emailRecordCard);
+        $this->assertStringContainsString('why_it_matters', $emailRecordCard);
+        $this->assertStringContainsString('recommended_next_step', $emailRecordCard);
+        $this->assertStringContainsString('No email summary available.', $emailRecordCard);
+        $this->assertStringNotContainsString('/surface-tree/impressions/', $emailRecordCard);
+        $this->assertStringContainsString('& .surface-tree__email-sections', $surfaceTreeCss);
+        $this->assertStringContainsString('& .surface-tree__email-list', $surfaceTreeCss);
+        $this->assertStringContainsString('& .surface-tree__email-body', $surfaceTreeCss);
+        $this->assertStringContainsString('& .surface-tree__email-body p', $surfaceTreeCss);
+        $this->assertStringContainsString('.surface-tree__filter-select', $surfaceTreeCss);
+        $this->assertStringContainsString('.surface-tree-header-filter', $surfaceTreeCss);
     }
 
     public function test_impression_card_lazy_loads_raw_corpus_as_read_only_markdown(): void
@@ -109,10 +197,11 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('marked.parse(rawCorpus.value', $impressionCard);
         $this->assertStringContainsString('v-html="compiledMarkdown"', $impressionCard);
         $this->assertStringContainsString('/surface-tree/impressions/${encodeURIComponent(id)}/corpus', $impressionCard);
+        $this->assertStringContainsString("'X-Requested-With': 'XMLHttpRequest'", $impressionCard);
         $this->assertStringContainsString('Loading corpus...', $impressionCard);
         $this->assertStringNotContainsString('<textarea', $impressionCard);
         $this->assertStringNotContainsString('contenteditable', $impressionCard);
-        $this->assertStringContainsString('.surface-tree .surface-tree__corpus-body', $surfaceTreeCss);
+        $this->assertStringContainsString('& .surface-tree__corpus-body', $surfaceTreeCss);
     }
 
     public function test_surface_tree_component_uses_local_storage_child_cache_and_ttls(): void
@@ -150,11 +239,11 @@ class SurfaceTreePageTest extends TestCase
 
         $this->assertStringNotContainsString('surface-tree.css', $appCss);
         $this->assertStringContainsString('resources/css/surface-tree.css', $viteConfig);
-        $this->assertStringContainsString('.surface-tree .surface-tree__layout', $surfaceTreeCss);
-        $this->assertStringContainsString('grid-template-columns: minmax(280px, 420px) 1fr;', $surfaceTreeCss);
+        $this->assertStringContainsString('& .surface-tree__layout', $surfaceTreeCss);
+        $this->assertStringContainsString('grid-cols-[minmax(280px,420px)_1fr]', $surfaceTreeCss);
         $this->assertStringNotContainsString('linear-gradient', $surfaceTreeCss);
         $this->assertStringNotContainsString('box-shadow', $surfaceTreeCss);
-        $this->assertStringNotContainsString('@apply', $surfaceTreeCss);
+        $this->assertStringContainsString('@apply', $surfaceTreeCss);
         $this->assertStringNotContainsString('animation', $surfaceTreeCss);
         $this->assertStringNotContainsString('gradient', $surfaceTreeCss);
         $this->assertStringNotContainsString('shadow', $surfaceTreeCss);

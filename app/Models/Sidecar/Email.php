@@ -18,6 +18,10 @@ class Email extends Model
 
     protected $table = 'emails';
 
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
     public $timestamps = false;
 
     protected $guarded = [];

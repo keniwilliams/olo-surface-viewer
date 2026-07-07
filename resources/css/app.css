@@ -8,241 +8,367 @@
 @source '../../resources/js/**/*.vue';
 
 @theme {
+    --surface-bg: 9 9 11;
+    --surface-bg-alpha: 95%;
+    --surface-border: 255 255 255;
+    --surface-border-alpha: 10%;
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --dark-text: var(--color-400);
+    --color-olo-text-color: var(--gray-300);
+    --color-olo-bg-color-main-content: oklch(0.193 0.045 243);
+    --color-olo-bg: var(--gray-800);
+    --color-olo-sidenav-bg: var(--gray-900);
+
+    --danger-50: oklch(0.971 0.013 17.38);
+    --danger-100: oklch(0.936 0.032 17.717);
+    --danger-200: oklch(0.885 0.062 18.334);
+    --danger-300: oklch(0.808 0.114 19.571);
+    --danger-400: oklch(0.704 0.191 22.216);
+    --danger-500: oklch(0.637 0.237 25.331);
+    --danger-600: oklch(0.577 0.245 27.325);
+    --danger-700: oklch(0.505 0.213 27.518);
+    --danger-800: oklch(0.444 0.177 26.899);
+    --danger-900: oklch(0.396 0.141 25.723);
+    --danger-950: oklch(0.258 0.092 26.042);
+    --gray-50: oklch(0.985 0 0);
+    --gray-100: oklch(0.967 0.001 286.375);
+    --gray-200: oklch(0.92 0.004 286.32);
+    --gray-300: oklch(0.871 0.006 286.286);
+    --gray-400: oklch(0.705 0.015 286.067);
+    --gray-500: oklch(0.552 0.016 285.938);
+    --gray-600: oklch(0.442 0.017 285.786);
+    --gray-700: oklch(0.37 0.013 285.805);
+    --gray-800: oklch(0.274 0.006 286.033);
+    --gray-900: oklch(0.21 0.006 285.885);
+    --gray-950: oklch(0.141 0.005 285.823);
+    --info-50: oklch(0.97 0.014 254.604);
+    --info-100: oklch(0.932 0.032 255.585);
+    --info-200: oklch(0.882 0.059 254.128);
+    --info-300: oklch(0.809 0.105 251.813);
+    --info-400: oklch(0.707 0.165 254.624);
+    --info-500: oklch(0.623 0.214 259.815);
+    --info-600: oklch(0.546 0.245 262.881);
+    --info-700: oklch(0.488 0.243 264.376);
+    --info-800: oklch(0.424 0.199 265.638);
+    --info-900: oklch(0.379 0.146 265.522);
+    --info-950: oklch(0.282 0.091 267.935);
+    --primary-50: oklch(0.987 0.022 95.277);
+    --primary-100: oklch(0.962 0.059 95.617);
+    --primary-200: oklch(0.924 0.12 95.746);
+    --primary-300: oklch(0.879 0.169 91.605);
+    --primary-400: oklch(0.828 0.189 84.429);
+    --primary-500: oklch(0.769 0.188 70.08);
+    --primary-600: oklch(0.666 0.179 58.318);
+    --primary-700: oklch(0.555 0.163 48.998);
+    --primary-800: oklch(0.473 0.137 46.201);
+    --primary-900: oklch(0.414 0.112 45.904);
+    --primary-950: oklch(0.279 0.077 45.635);
+    --success-50: oklch(0.982 0.018 155.826);
+    --success-100: oklch(0.962 0.044 156.743);
+    --success-200: oklch(0.925 0.084 155.995);
+    --success-300: oklch(0.871 0.15 154.449);
+    --success-400: oklch(0.792 0.209 151.711);
+    --success-500: oklch(0.723 0.219 149.579);
+    --success-600: oklch(0.627 0.194 149.214);
+    --success-700: oklch(0.527 0.154 150.069);
+    --success-800: oklch(0.448 0.119 151.328);
+    --success-900: oklch(0.393 0.095 152.535);
+    --success-950: oklch(0.266 0.065 152.934);
+    --warning-50: oklch(0.987 0.022 95.277);
+    --warning-100: oklch(0.962 0.059 95.617);
+    --warning-200: oklch(0.924 0.12 95.746);
+    --warning-300: oklch(0.879 0.169 91.605);
+    --warning-400: oklch(0.828 0.189 84.429);
+    --warning-500: oklch(0.769 0.188 70.08);
+    --warning-600: oklch(0.666 0.179 58.318);
+    --warning-700: oklch(0.555 0.163 48.998);
+    --warning-800: oklch(0.473 0.137 46.201);
+    --warning-900: oklch(0.414 0.112 45.904);
+    --warning-950: oklch(0.279 0.077 45.635);
+}
+
+.fi-body{
+    @apply bg-olo-bg;
+
+    &:where(.dark, .dark *) {
+        @apply text-olo-text-color;
+    }
+}
+.fi-sidebar-nav{
+    @apply rounded-r-xl pt-1 mt-5 mb-2 bg-olo-sidenav-bg ring-1 ring-black/50;
+}
+/* Filament cloaks .fi-main-ctn (opacity-0 until Alpine boots), which makes the
+   main content fade in on every wire:navigate page change. Keep it visible. */
+.fi-body.fi-body-has-sidebar-collapsible-on-desktop .fi-main-ctn,
+.fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop .fi-main-ctn {
+    @apply opacity-100;
+}
+.fi-main{
+    @apply flex flex-col;
+}
+.fi-page{
+    @apply flex flex-1 flex-col;
+}
+/* Transparent column: the .fi-header top bar sits on top, the .fi-page-main
+   panel fills the rest. mt-5 keeps the bar level with the sidebar nav. */
+.fi-page-header-main-ctn{
+    @apply flex-1 gap-y-0 p-0 mt-5 mb-2 ml-2;
+}
+/* Page body panel; sits flush under the breadcrumbs/actions top bar. */
+.fi-page-main{
+    @apply flex-1 rounded-b-xl p-3 bg-olo-bg-color-main-content ring-1 ring-black/10;
 }
 
 @media (min-width: 1024px) {
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-layout {
-        display: grid;
-        grid-template-columns: 0rem minmax(0, 1fr);
-        transition: grid-template-columns 200ms ease;
+    .fi-body.fi-body-has-sidebar-collapsible-on-desktop:not(.fi-body-has-top-navigation) {
+        & .fi-sidebar:not(.fi-sidebar-open) {
+            @apply w-(--collapsed-sidebar-width);
+
+            & .fi-sidebar-nav {
+                @apply px-2;
+            }
+
+            & .fi-sidebar-item-btn,
+            & .fi-sidebar-group-btn,
+            & .fi-sidebar-group-dropdown-trigger-btn {
+                @apply justify-center gap-x-0 px-0 rounded-l-none;
+            }
+
+            html.surface-tree-flyout-open & .fi-sidebar-item-btn,
+            html.surface-tree-flyout-open & .fi-sidebar-group-btn,
+            html.surface-tree-flyout-open & .fi-sidebar-group-dropdown-trigger-btn {
+                @apply rounded-none;
+            }
+        }
     }
 
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation)
-        .fi-layout:has(.fi-main-sidebar.fi-sidebar-open) {
-        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    .fi-sidebar-item-btn,
+    .fi-sidebar-group-btn,
+    .fi-sidebar-group-dropdown-trigger-btn {
+        @apply transition-[border-radius] duration-200 ease-out;
     }
 
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-main-sidebar {
-        position: sticky;
-        width: 100%;
-        min-width: 0;
-        overflow: hidden;
-        transform: translateX(0);
+    .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
+        @apply hidden;
     }
 
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop.fi-body-has-topbar:not(.fi-body-has-top-navigation)
-        .fi-main-sidebar {
-        top: 4rem;
-        height: calc(100dvh - 4rem);
+    html.surface-tree-flyout-open {
+        & .fi-sidebar-nav {
+            @apply overflow-visible;
+        }
+
+        & .fi-sidebar:not(.fi-sidebar-open) .surface-tree-flyout {
+            @apply fixed rounded-r-xl inset-y-0 z-40 flex w-80 flex-col mt-8 mb-5 shadow-xl ring-1 ring-black/50;
+            left: var(--collapsed-sidebar-width);
+            background-color: rgb(var(--surface-bg) / var(--surface-bg-alpha));
+        }
+
+        & .surface-tree-flyout__header {
+            @apply flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 flex-none;
+        }
+
+        & .surface-tree-flyout__title {
+            @apply text-sm font-semibold;
+        }
+
+        & .surface-tree-flyout__close {
+            @apply border-0 bg-transparent text-inherit text-xl leading-none cursor-pointer px-1;
+        }
+
+        & #surface-tree-sidebar {
+            @apply overflow-y-auto px-3 pb-3;
+        }
     }
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-    .fi-body.fi-body-has-sidebar-fully-collapsible-on-desktop:not(.fi-body-has-top-navigation) .fi-layout {
-        transition: none;
+.surface-tree-flyout__header {
+    @apply hidden;
+}
+
+/* Shared page top bar: breadcrumbs on the left, page filters/actions on the
+   right. Same surface as the sidebar nav. */
+.fi-header {
+    /* top-16 pins it directly below the sticky 4rem app topbar. */
+    /* Border instead of ring so the bottom edge can stay open toward the page panel. */
+    @apply sticky top-16 z-10 rounded-t-xl px-4 py-2.5 bg-olo-sidenav-bg border border-b-0 border-black/50 transition-[border-radius] duration-150;
+
+    /* Applied from app.js while the bar is pinned under the app topbar. */
+    &.fi-header-stuck {
+        @apply rounded-t-none;
+    }
+
+    & .fi-breadcrumbs {
+        @apply mb-0;
+    }
+
+    &.fi-header-has-breadcrumbs .fi-header-actions-ctn {
+        @apply sm:mt-0;
+    }
+}
+
+.fi-breadcrumbs {
+    margin: 0;
+    & ol {
+        & li {
+
+        }
     }
 }
 
 .olo-cockpit {
-    gap: 1rem;
-    &__toolbar {
-        gap: 0.5rem;
-        align-items: stretch;
+    @apply gap-4;
+
+    & .olo-cockpit__toolbar {
+        @apply flex gap-2 items-stretch;
+    }
+
+    & .olo-cockpit__notice {
+        @apply rounded-xl bg-danger-50 text-danger-700 shadow-sm ring-1 ring-danger-600/10 dark:bg-danger-400/10 dark:text-danger-300 dark:ring-danger-400/30 px-4 py-3;
+    }
+
+    & .olo-cockpit__grid {
+        @apply grid grid-cols-[repeat(auto-fit,minmax(min(100%,25rem),1fr))] gap-3 mt-4;
     }
 }
-
-
 
 .olo-organ-button {
-    @apply bg-success-50 text-success-700 hover:bg-success-100 hover:text-success-800 dark:bg-success-400/10 dark:text-success-300 dark:hover:bg-success-400/20 dark:hover:text-success-200 justify-center rounded-lg text-sm font-medium transition duration-75 outline-none;
-    cursor: grab;
+    @apply bg-success-50 text-success-700 hover:bg-success-100 hover:text-success-800 dark:bg-success-400/10 dark:text-success-300 dark:hover:bg-success-400/20 dark:hover:text-success-200 justify-center rounded-lg text-sm font-medium transition duration-75 outline-none cursor-grab;
 
     &:active {
-        cursor: grabbing;
+        @apply cursor-grabbing;
     }
-}
 
-.olo-organ-button--hidden {
-    @apply text-gray-500  dark:bg-gray-900;
-}
+    &.olo-organ-button--hidden {
+        @apply text-gray-500 dark:bg-gray-900;
+    }
 
-.olo-organ-button__drag {
-    @apply text-gray-500;
-}
-.olo-organ-button__label {
-    overflow-wrap: anywhere;
-}
-.olo-organ-button__state {
-    text-transform: uppercase;
-}
-.olo-organ-button__label,
-.olo-feed-item__top,
-.olo-organ-panel__header {
-    min-width: 0;
-}
+    & .olo-organ-button__drag {
+        @apply text-gray-500;
+    }
 
+    & .olo-organ-button__label {
+        @apply [overflow-wrap:anywhere] min-w-0;
+    }
 
-
-.olo-cockpit__notice {
-    @apply rounded-xl bg-danger-50 text-danger-700 shadow-sm ring-1 ring-danger-600/10 dark:bg-danger-400/10 dark:text-danger-300 dark:ring-danger-400/30;
-
-    padding: 0.75rem 1rem;
-}
-
-.olo-cockpit__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-
-.olo-organ-panel,
-.olo-feed {
-    @apply rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10;
+    & .olo-organ-button__state {
+        @apply uppercase;
+    }
 }
 
 .olo-organ-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    min-width: 0;
-    padding: 1rem;
-}
+    @apply rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 flex flex-col gap-3 min-w-0 p-4;
 
-.olo-organ-panel__header,
-.olo-feed__header,
-.olo-feed-item__top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-}
+    & .olo-organ-panel__header {
+        @apply flex items-start justify-between gap-3 min-w-0;
 
-.olo-organ-panel__header h2,
-.olo-feed__header h2 {
-    @apply text-gray-950 dark:text-gray-50;
-}
+        & h2 {
+            @apply text-gray-950 dark:text-gray-50;
+        }
 
-.olo-organ-panel__header p,
-.olo-organ-panel__message,
-.olo-feed-item__message {
+        & p {
+            @apply text-gray-600 dark:text-gray-400 [overflow-wrap:anywhere];
+        }
+    }
 
-}
+    & .olo-organ-panel__details {
+        @apply grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2.5 m-0;
 
-.olo-organ-panel__header p {
-    @apply text-gray-600 dark:text-gray-400;
-    overflow-wrap: anywhere;
+        & div {
+            @apply min-w-0;
+        }
+
+        & dt {
+            @apply text-gray-500 dark:text-gray-400 text-[0.6875rem] font-bold leading-4 uppercase;
+        }
+
+        & dd {
+            @apply text-gray-950 dark:text-gray-100 m-0 font-mono text-[0.8125rem] leading-5 [overflow-wrap:anywhere];
+        }
+    }
+
+    & .olo-organ-panel__message {
+        @apply text-gray-800 dark:text-gray-200 leading-normal;
+    }
+
+    & .olo-organ-panel__error {
+        @apply bg-danger-50 text-danger-700 dark:bg-danger-400/10 dark:text-danger-300 m-0 p-2.5 rounded-lg [overflow-wrap:anywhere];
+    }
 }
 
 .olo-status-pill {
-    @apply inline-flex min-w-6 items-center justify-center gap-x-1 rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-600/10 ring-inset dark:bg-gray-400/10 dark:text-gray-200 dark:ring-gray-400/20;
+    @apply inline-flex min-w-6 items-center justify-center gap-x-1 rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-600/10 ring-inset dark:bg-gray-400/10 dark:text-gray-200 dark:ring-gray-400/20 flex-none;
 
-    flex: 0 0 auto;
-}
+    &[data-status='readable'],
+    &[data-status='fresh'],
+    &[data-status='received'] {
+        @apply bg-success-50 text-success-700 ring-success-600/10 dark:bg-success-400/10 dark:text-success-300 dark:ring-success-400/30;
+    }
 
-.olo-status-pill[data-status='readable'],
-.olo-status-pill[data-status='fresh'],
-.olo-status-pill[data-status='received'] {
-    @apply bg-success-50 text-success-700 ring-success-600/10 dark:bg-success-400/10 dark:text-success-300 dark:ring-success-400/30;
-}
+    &[data-status='stale'],
+    &[data-status='disabled'],
+    &[data-status='unknown'] {
+        @apply bg-warning-50 text-warning-700 ring-warning-600/10 dark:bg-warning-400/10 dark:text-warning-300 dark:ring-warning-400/30;
+    }
 
-.olo-status-pill[data-status='stale'],
-.olo-status-pill[data-status='disabled'],
-.olo-status-pill[data-status='unknown'] {
-    @apply bg-warning-50 text-warning-700 ring-warning-600/10 dark:bg-warning-400/10 dark:text-warning-300 dark:ring-warning-400/30;
-}
-
-.olo-status-pill[data-status='error'] {
-    @apply bg-danger-50 text-danger-700 ring-danger-600/10 dark:bg-danger-400/10 dark:text-danger-300 dark:ring-danger-400/30;
-}
-
-.olo-organ-panel__details,
-.olo-feed-item__details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
-    gap: 0.625rem;
-    margin: 0;
-}
-
-.olo-organ-panel__details div,
-.olo-feed-item__details div {
-    min-width: 0;
-}
-
-.olo-organ-panel__details dt,
-.olo-feed-item__details dt {
-    @apply text-gray-500 dark:text-gray-400;
-
-    font-size: 0.6875rem;
-    font-weight: 700;
-    line-height: 1rem;
-    text-transform: uppercase;
-}
-
-.olo-organ-panel__details dd,
-.olo-feed-item__details dd {
-    @apply text-gray-950 dark:text-gray-100;
-
-    margin: 0;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    font-size: 0.8125rem;
-    line-height: 1.25rem;
-    overflow-wrap: anywhere;
-}
-
-.olo-organ-panel__message,
-.olo-feed-item__message {
-    @apply text-gray-800 dark:text-gray-200;
-
-    line-height: 1.5;
-}
-
-.olo-organ-panel__error,
-.olo-feed-item__error {
-    @apply bg-danger-50 text-danger-700 dark:bg-danger-400/10 dark:text-danger-300;
-
-    margin: 0;
-    padding: 0.625rem;
-    border-radius: 0.5rem;
-    overflow-wrap: anywhere;
+    &[data-status='error'] {
+        @apply bg-danger-50 text-danger-700 ring-danger-600/10 dark:bg-danger-400/10 dark:text-danger-300 dark:ring-danger-400/30;
+    }
 }
 
 .olo-feed {
-    margin-top: 1rem;
-    padding: 1rem;
-}
+    @apply rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mt-4 p-4;
 
-.olo-refresh-button {
-    @apply relative inline-grid items-center justify-center rounded-lg bg-gray-50 text-sm font-medium text-gray-950 shadow-sm ring-1 ring-gray-950/10 transition duration-75 outline-none hover:bg-gray-100 hover:text-gray-950 dark:bg-gray-900 dark:text-gray-100 dark:ring-white/20 dark:hover:bg-gray-800 dark:hover:text-gray-50;
+    & .olo-feed__header {
+        @apply flex items-start justify-between gap-3;
 
-    flex: 0 0 auto;
-    min-height: 2rem;
-    padding: 0.375rem 0.75rem;
-    font-weight: 700;
-}
+        & h2 {
+            @apply text-gray-950 dark:text-gray-50;
+        }
+    }
 
-.olo-feed__list {
-    display: grid;
-    gap: 0.75rem;
-    margin: 1rem 0 0;
-    padding: 0;
-    list-style: none;
+    & .olo-refresh-button {
+        @apply relative inline-grid items-center justify-center rounded-lg bg-gray-50 text-sm font-medium text-gray-950 shadow-sm ring-1 ring-gray-950/10 transition duration-75 outline-none hover:bg-gray-100 hover:text-gray-950 dark:bg-gray-900 dark:text-gray-100 dark:ring-white/20 dark:hover:bg-gray-800 dark:hover:text-gray-50 flex-none min-h-8 px-3 py-1.5 font-bold;
+    }
+
+    & .olo-feed__list {
+        @apply grid gap-3 mt-4 p-0 list-none;
+    }
 }
 
 .olo-feed-item {
-    @apply border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/55;
+    @apply border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800/55 grid gap-2.5 p-3.5 rounded-lg;
 
-    display: grid;
-    gap: 0.625rem;
-    padding: 0.875rem;
-    border-radius: 0.5rem;
+    & .olo-feed-item__top {
+        @apply flex items-start justify-between gap-3 min-w-0;
+
+        & span:first-child {
+            @apply text-gray-950 dark:text-gray-50 font-bold [overflow-wrap:anywhere];
+        }
+    }
+
+    & .olo-feed-item__details {
+        @apply grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2.5 m-0;
+
+        & div {
+            @apply min-w-0;
+        }
+
+        & dt {
+            @apply text-gray-500 dark:text-gray-400 text-[0.6875rem] font-bold leading-4 uppercase;
+        }
+
+        & dd {
+            @apply text-gray-950 dark:text-gray-100 m-0 font-mono text-[0.8125rem] leading-5 [overflow-wrap:anywhere];
+        }
+    }
+
+    & .olo-feed-item__message {
+        @apply text-gray-800 dark:text-gray-200 leading-normal;
+    }
+
+    & .olo-feed-item__error {
+        @apply bg-danger-50 text-danger-700 dark:bg-danger-400/10 dark:text-danger-300 m-0 p-2.5 rounded-lg [overflow-wrap:anywhere];
+    }
 }
 
-.olo-feed-item__top span:first-child {
-    @apply text-gray-950 dark:text-gray-50;
-
-    font-weight: 700;
-    overflow-wrap: anywhere;
-}

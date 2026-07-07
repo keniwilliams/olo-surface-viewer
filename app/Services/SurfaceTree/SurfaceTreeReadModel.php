@@ -7,6 +7,7 @@ class SurfaceTreeReadModel
     public function __construct(
         private readonly FilesystemTreeTraverser $filesystemTree,
         private readonly EmailTreeTraverser $emailTree,
+        private readonly DomainImpressionsTraverser $domainImpressions,
     ) {}
 
     /**
@@ -69,8 +70,8 @@ class SurfaceTreeReadModel
         return [
             new SurfaceTreeNode('domain:filesystem', 'Filesystem', 'domain', 'filesystem', null, null, 0, true, false, null),
             new SurfaceTreeNode('domain:email', 'Email', 'domain', 'email', null, null, 0, true, false, null),
-            new SurfaceTreeNode('domain:dreamstate', 'Dreamstate', 'domain', 'dreamstate', null, null, 0, false, false, null),
-            new SurfaceTreeNode('domain:camera_lens', 'Camera Lens', 'domain', 'camera_lens', null, null, 0, false, false, null),
+            new SurfaceTreeNode('domain:dreamstate', 'Dreamstate', 'domain', 'dreamstate', null, null, 0, true, false, null),
+            new SurfaceTreeNode('domain:camera_lens', 'Camera Lens', 'domain', 'camera_lens', null, null, 0, true, false, null),
         ];
     }
 
@@ -87,8 +88,9 @@ class SurfaceTreeReadModel
             return $this->emailTree->children($nodeKey, $fromDepth, $depthWindow);
         }
 
-        if (str_starts_with($nodeKey, 'impression:') || in_array($nodeKey, ['domain:dreamstate', 'domain:camera_lens'], true)) {
-            return [];
+        if (in_array($nodeKey, ['domain:dreamstate', 'domain:camera_lens'], true)
+            || str_starts_with($nodeKey, 'folder:camera_lens:')) {
+            return $this->domainImpressions->children($nodeKey, $fromDepth, $depthWindow);
         }
 
         return [];
@@ -112,7 +114,15 @@ class SurfaceTreeReadModel
             return 1;
         }
 
+        if (str_starts_with($nodeKey, 'folder:camera_lens:')) {
+            return 1;
+        }
+
         if (str_starts_with($nodeKey, 'impression:')) {
+            return 2;
+        }
+
+        if (str_starts_with($nodeKey, 'record:camera_lens_telemetry:')) {
             return 2;
         }
 

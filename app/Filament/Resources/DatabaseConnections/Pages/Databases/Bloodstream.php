@@ -17,6 +17,11 @@ class Bloodstream extends Page
         return 'Bloodstream';
     }
 
+    public function getHeading(): ?string
+    {
+        return null;
+    }
+
     public function getViewData(): array
     {
         $panelState = app(BloodstreamObserverPanelState::class);
