@@ -118,6 +118,10 @@ trait BuildsSurfaceTreeNodes
             return $row->getAttribute($key);
         }
 
+        if (is_array($row)) {
+            return $row[$key] ?? null;
+        }
+
         return is_object($row) && property_exists($row, $key) ? $row->{$key} : null;
     }
 
