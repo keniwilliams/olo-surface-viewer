@@ -49,9 +49,16 @@ class SurfaceTreeArchitectureTest extends TestCase
     {
         $feed = File::get(app_path('Services/SurfaceTree/EmailImpressionsFeed.php'));
 
-        $this->assertStringContainsString('use App\Models\Impressions\SensemadeImpression;', $feed);
         $this->assertStringContainsString('use App\Models\Sidecar\Email;', $feed);
+        $this->assertStringContainsString('use App\Models\Sidecar\EmailMessage;', $feed);
+        $this->assertStringContainsString('use App\Models\Sidecar\EmailSync;', $feed);
+        $this->assertStringContainsString('use App\Models\Impressions\EmailImpression;', $feed);
         $this->assertStringContainsString('$modelClass::query()', $feed);
+        $this->assertStringContainsString('SENDER_CHILD_LIMIT = 50', $feed);
+        $this->assertStringContainsString('->select($profile[', $feed);
+        $this->assertStringContainsString('->toBase()', $feed);
+        $this->assertStringNotContainsString('limit(250)', $feed);
+        $this->assertStringNotContainsString('columns($modelClass)', $feed);
         $this->assertStringNotContainsString('DB::connection', $feed);
         $this->assertStringNotContainsString('->table(', $feed);
     }

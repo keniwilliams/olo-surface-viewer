@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Impressions\EmailImpression;
+use App\Models\Sidecar\Email;
 use App\Services\SurfaceTree\EmailTreeTraverser;
 use App\Services\SurfaceTree\FilesystemTreeTraverser;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -17,6 +20,7 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->configureSqliteOrgan('impressions');
         $this->configureSqliteOrgan('sidecar');
         $this->createImpressionsTable();
+        $this->createEmailImpressionsTable();
         $this->createSidecarEmailsTable();
         $this->seedSurfaceTreeRecords();
     }
@@ -166,7 +170,7 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertNull($traverser->rawCorpus('missing-uuid'));
     }
 
-    public function test_email_traverser_groups_impressions_by_sender_and_enriches_from_sidecar(): void
+    public function test_email_traverser_groups_email_records_by_sender_and_exposes_useful_meta(): void
     {
         $traverser = app(EmailTreeTraverser::class);
 
@@ -175,16 +179,230 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertSame('sender@example.com', $senders[0]->label);
         $this->assertSame('folder', $senders[0]->type);
         $this->assertSame('from_sender', $senders[0]->relation);
+        $this->assertSame('sender@example.com', $senders[0]->meta['sender']);
+        $this->assertSame(1, $senders[0]->meta['message_count']);
+        $this->assertSame('Sidecar subject', $senders[0]->meta['latest_subject']);
+        $this->assertSame('2026-07-05 11:58:00', $senders[0]->meta['latest_received_at']);
+        $this->assertSame('message-1', $senders[0]->meta['latest_source_ref']);
+        $this->assertSame('Impressions human summary.', $senders[0]->meta['latest_human_summary']);
 
-        $impressions = $traverser->children($senders[0]->key, 1, 3);
-        $this->assertCount(1, $impressions);
-        $this->assertSame('impression:email-uuid', $impressions[0]->key);
-        $this->assertSame('impression', $impressions[0]->type);
-        $this->assertSame('email-uuid', $impressions[0]->impressionId);
-        $this->assertSame('/impressions/email-uuid', $impressions[0]->href);
-        $this->assertSame('message-1', $impressions[0]->meta['source_ref']);
-        $this->assertSame('sender@example.com', $impressions[0]->meta['sender']);
-        $this->assertSame('thread-1', $impressions[0]->meta['thread_id']);
+        $records = $traverser->children($senders[0]->key, 1, 3);
+        $this->assertCount(1, $records);
+        $this->assertSame('record', $records[0]->type);
+        $this->assertSame('email', $records[0]->domain);
+        $this->assertNull($records[0]->impressionId);
+        $this->assertNull($records[0]->href);
+        $this->assertSame('email_listing', $records[0]->relation);
+        $this->assertSame('Sidecar subject', $records[0]->label);
+        $this->assertSame('message-1', $records[0]->meta['source_ref']);
+        $this->assertSame('Sidecar subject', $records[0]->meta['subject']);
+        $this->assertSame('sender@example.com', $records[0]->meta['sender']);
+        $this->assertSame('thread-1', $records[0]->meta['thread_id']);
+        $this->assertSame('email-impression-uuid', $records[0]->meta['related_impression_id']);
+        $this->assertSame('2026-07-05 11:58:00', $records[0]->meta['received_at']);
+        $this->assertSame('Short preview.', $records[0]->meta['body_preview']);
+        $this->assertSame('Full normalised email body.', $records[0]->meta['email_body']);
+        $this->assertSame('Impressions human summary.', $records[0]->meta['human_summary']);
+        $this->assertSame('Impressions sensemade text.', $records[0]->meta['sensemade_text']);
+        $this->assertSame('This affects the current work.', $records[0]->meta['why_it_matters']);
+        $this->assertSame('Reply with the requested detail.', $records[0]->meta['recommended_next_step']);
+    }
+
+    public function test_email_traverser_does_not_list_generic_impressions_as_email_nodes(): void
+    {
+        Schema::connection('impressions')->drop('sensemade_impressions');
+        Schema::connection('impressions')->create('sensemade_impressions', function ($table): void {
+            $table->id();
+            $table->string('impression_id');
+            $table->string('label')->nullable();
+            $table->string('kind')->nullable();
+            $table->string('status')->nullable();
+            $table->string('source_path')->nullable();
+            $table->string('source_ref')->nullable();
+            $table->string('thread_id')->nullable();
+            $table->timestampTz('observed_at')->nullable();
+        });
+
+        DB::connection('impressions')->table('sensemade_impressions')->insert([
+            [
+                'impression_id' => 'canon-uuid',
+                'label' => 'Canon document',
+                'kind' => 'canon',
+                'status' => 'observed',
+                'source_path' => null,
+                'source_ref' => null,
+                'thread_id' => null,
+                'observed_at' => '2026-07-05 12:02:00',
+            ],
+            [
+                'impression_id' => 'living-doc-uuid',
+                'label' => 'Living document',
+                'kind' => 'living_document',
+                'status' => 'observed',
+                'source_path' => null,
+                'source_ref' => null,
+                'thread_id' => null,
+                'observed_at' => '2026-07-05 12:03:00',
+            ],
+        ]);
+
+        $senders = app(EmailTreeTraverser::class)->children('domain:email', 0, 3);
+
+        $this->assertSame(['sender@example.com'], array_map(fn ($node) => $node->label, $senders));
+
+        $records = app(EmailTreeTraverser::class)->children($senders[0]->key, 1, 3);
+
+        $this->assertSame(['Sidecar subject'], array_map(fn ($node) => $node->label, $records));
+    }
+
+    public function test_email_traverser_uses_unknown_sender_only_when_email_sender_is_missing(): void
+    {
+        DB::connection('sidecar')->table('emails')->insert([
+            'message_id' => 'message-2',
+            'thread_id' => 'thread-2',
+            'sender' => null,
+            'subject' => 'Senderless subject',
+            'status' => 'synced',
+            'received_at' => '2026-07-05 11:59:00',
+        ]);
+
+        $senders = app(EmailTreeTraverser::class)->children('domain:email', 0, 3);
+        $labels = array_map(fn ($node) => $node->label, $senders);
+
+        $this->assertContains('sender@example.com', $labels);
+        $this->assertContains('unknown sender', $labels);
+
+        $unknownSender = array_values(array_filter($senders, fn ($node) => $node->label === 'unknown sender'))[0];
+        $records = app(EmailTreeTraverser::class)->children($unknownSender->key, 1, 3);
+
+        $this->assertCount(1, $records);
+        $this->assertSame('Senderless subject', $records[0]->label);
+        $this->assertSame('unknown sender', $records[0]->meta['sender']);
+        $this->assertSame('message-2', $records[0]->meta['source_ref']);
+    }
+
+    public function test_email_children_are_bounded_to_sender_window_and_do_not_hydrate_models(): void
+    {
+        $retrieved = [
+            Email::class => 0,
+            EmailImpression::class => 0,
+        ];
+
+        Event::listen('eloquent.retrieved: '.Email::class, function () use (&$retrieved): void {
+            $retrieved[Email::class]++;
+        });
+        Event::listen('eloquent.retrieved: '.EmailImpression::class, function () use (&$retrieved): void {
+            $retrieved[EmailImpression::class]++;
+        });
+
+        $rows = [];
+
+        foreach (range(2, 76) as $index) {
+            $rows[] = [
+                'message_id' => "sender-message-{$index}",
+                'thread_id' => "sender-thread-{$index}",
+                'sender' => 'sender@example.com',
+                'subject' => "Sender subject {$index}",
+                'status' => 'synced',
+                'received_at' => sprintf('2026-07-05 12:%02d:00', $index % 60),
+            ];
+        }
+
+        $rows[] = [
+            'message_id' => 'other-message',
+            'thread_id' => 'other-thread',
+            'sender' => 'other@example.com',
+            'subject' => 'Other sender subject',
+            'status' => 'synced',
+            'received_at' => '2026-07-05 13:00:00',
+        ];
+
+        foreach (array_chunk($rows, 25) as $chunk) {
+            DB::connection('sidecar')->table('emails')->insert($chunk);
+        }
+
+        $records = app(EmailTreeTraverser::class)->children($this->senderNodeKey('sender@example.com'), 1, 3);
+
+        $this->assertCount(50, $records);
+        $this->assertSame([Email::class => 0, EmailImpression::class => 0], $retrieved);
+        $this->assertNotContains('Other sender subject', array_map(fn ($node) => $node->label, $records));
+
+        foreach ($records as $record) {
+            $this->assertSame('sender@example.com', $record->meta['sender']);
+        }
+    }
+
+    public function test_email_record_labels_fall_back_to_from_name_then_from_email(): void
+    {
+        Schema::connection('sidecar')->drop('emails');
+        Schema::connection('sidecar')->create('emails', function ($table): void {
+            $table->string('id')->primary();
+            $table->string('from_email')->nullable();
+            $table->string('from_name')->nullable();
+            $table->string('subject')->nullable();
+            $table->text('normalised_body')->nullable();
+            $table->timestampTz('received_at')->nullable();
+        });
+
+        DB::connection('sidecar')->table('emails')->insert([
+            [
+                'id' => 'from-name-message',
+                'from_email' => 'from@example.com',
+                'from_name' => 'Useful Sender Name',
+                'subject' => null,
+                'normalised_body' => 'Body from named sender.',
+                'received_at' => '2026-07-06 09:00:00',
+            ],
+            [
+                'id' => 'from-email-message',
+                'from_email' => 'email-only@example.com',
+                'from_name' => null,
+                'subject' => null,
+                'normalised_body' => 'Body from email-only sender.',
+                'received_at' => '2026-07-06 09:01:00',
+            ],
+        ]);
+
+        $fromNameRecords = app(EmailTreeTraverser::class)->children($this->senderNodeKey('from@example.com'), 1, 3);
+        $fromEmailRecords = app(EmailTreeTraverser::class)->children($this->senderNodeKey('email-only@example.com'), 1, 3);
+        $senderLabels = array_map(fn ($node) => $node->label, app(EmailTreeTraverser::class)->children('domain:email', 0, 3));
+
+        $this->assertSame('Useful Sender Name', $fromNameRecords[0]->label);
+        $this->assertSame('from@example.com', $fromNameRecords[0]->meta['sender']);
+        $this->assertSame('Useful Sender Name', $fromNameRecords[0]->meta['from_name']);
+        $this->assertSame('from@example.com', $fromNameRecords[0]->meta['from_email']);
+        $this->assertSame('email-only@example.com', $fromEmailRecords[0]->label);
+        $this->assertSame('email-only@example.com', $fromEmailRecords[0]->meta['sender']);
+        $this->assertArrayNotHasKey('from_name', $fromEmailRecords[0]->meta);
+        $this->assertNotContains('unknown sender', $senderLabels);
+    }
+
+    public function test_email_traverser_preserves_native_sidecar_string_ids_when_no_message_id_column_exists(): void
+    {
+        Schema::connection('sidecar')->drop('emails');
+        Schema::connection('sidecar')->create('emails', function ($table): void {
+            $table->string('id')->primary();
+            $table->string('sender')->nullable();
+            $table->string('subject')->nullable();
+            $table->text('normalised_body')->nullable();
+            $table->timestampTz('received_at')->nullable();
+        });
+
+        DB::connection('sidecar')->table('emails')->insert([
+            'id' => 'native-message-id',
+            'sender' => 'native@example.com',
+            'subject' => 'Native id subject',
+            'normalised_body' => 'Native body.',
+            'received_at' => '2026-07-06 09:00:00',
+        ]);
+
+        $senders = app(EmailTreeTraverser::class)->children('domain:email', 0, 3);
+        $records = app(EmailTreeTraverser::class)->children($senders[0]->key, 1, 3);
+
+        $this->assertSame('native@example.com', $senders[0]->label);
+        $this->assertSame('native-message-id', $records[0]->meta['source_ref']);
+        $this->assertStringNotContainsString('record:email:MA', $records[0]->key);
+        $this->assertSame('Native body.', $records[0]->meta['email_body']);
     }
 
     private function configureSqliteOrgan(string $connection): void
@@ -199,6 +417,11 @@ class SurfaceTreeTraverserTest extends TestCase
         ]);
 
         DB::purge($connection);
+    }
+
+    private function senderNodeKey(string $sender): string
+    {
+        return 'sender:email:'.rtrim(strtr(base64_encode($sender), '+/', '-_'), '=');
     }
 
     private function createImpressionsTable(): void
@@ -230,6 +453,18 @@ class SurfaceTreeTraverserTest extends TestCase
             $table->string('source_ref')->nullable();
             $table->text('raw_corpus')->nullable();
             $table->timestampTz('observed_at')->nullable();
+        });
+    }
+
+    private function createEmailImpressionsTable(): void
+    {
+        Schema::connection('impressions')->create('email_impressions', function ($table): void {
+            $table->string('impression_id')->primary();
+            $table->string('source_ref');
+            $table->text('email')->nullable();
+            $table->text('state')->nullable();
+            $table->timestampTz('created_at')->nullable();
+            $table->timestampTz('updated_at')->nullable();
         });
     }
 
@@ -265,6 +500,12 @@ class SurfaceTreeTraverserTest extends TestCase
             $table->string('sender')->nullable();
             $table->string('subject')->nullable();
             $table->string('status')->nullable();
+            $table->text('body_preview')->nullable();
+            $table->text('normalised_body')->nullable();
+            $table->text('human_summary')->nullable();
+            $table->text('sensemade_text')->nullable();
+            $table->text('why_it_matters')->nullable();
+            $table->text('recommended_next_step')->nullable();
             $table->timestampTz('received_at')->nullable();
         });
     }
@@ -302,7 +543,31 @@ class SurfaceTreeTraverserTest extends TestCase
             'sender' => 'sender@example.com',
             'subject' => 'Sidecar subject',
             'status' => 'synced',
+            'body_preview' => 'Short preview.',
+            'normalised_body' => 'Full normalised email body.',
+            'human_summary' => 'Human-readable summary.',
+            'sensemade_text' => 'Sensemade interpretation.',
+            'why_it_matters' => 'This affects the current work.',
+            'recommended_next_step' => 'Reply with the requested detail.',
             'received_at' => '2026-07-05 11:58:00',
+        ]);
+
+        DB::connection('impressions')->table('email_impressions')->insert([
+            'impression_id' => 'email-impression-uuid',
+            'source_ref' => 'outlook:message-1',
+            'email' => json_encode([
+                'message_id' => 'message-1',
+                'source_ref' => 'outlook:message-1',
+            ], JSON_THROW_ON_ERROR),
+            'state' => json_encode([
+                'sensemade_result' => [
+                    'human_summary' => 'Impressions human summary.',
+                    'sensemade_text' => 'Impressions sensemade text.',
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'created_at' => '2026-07-05 12:00:00',
+            'updated_at' => '2026-07-05 12:01:00',
         ]);
     }
 }
+

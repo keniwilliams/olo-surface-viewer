@@ -53,6 +53,7 @@
                 :loading-node-keys="loadingNodeKeys"
                 :node-errors="nodeErrors"
                 :selected-node-key="selectedNodeKey"
+                :email-filter-mode="emailFilterMode"
                 @toggle="emit('toggle', $event)"
                 @load-deeper="emit('load-deeper', $event)"
                 @select="emit('select', $event)"
@@ -63,7 +64,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { SurfaceTreeNode as SurfaceTreeNodeData } from './types';
+import { nodeMatchesEmailFilter } from './emailFilters';
+import type { EmailFilterMode, SurfaceTreeNode as SurfaceTreeNodeData } from './types';
 
 defineOptions({
     name: 'SurfaceTreeNode',
@@ -76,6 +78,7 @@ const props = defineProps<{
     loadingNodeKeys: Set<string>;
     nodeErrors: Record<string, string>;
     selectedNodeKey: string | null;
+    emailFilterMode: EmailFilterMode;
 }>();
 
 const emit = defineEmits<{
@@ -88,6 +91,7 @@ const expanded = computed(() => props.expandedNodeKeys.has(props.node.key));
 const loading = computed(() => props.loadingNodeKeys.has(props.node.key));
 const error = computed(() => props.nodeErrors[props.node.key] ?? null);
 const selected = computed(() => props.selectedNodeKey === props.node.key);
-const childNodes = computed(() => props.childrenByKey[props.node.key] ?? []);
+const childNodes = computed(() => (props.childrenByKey[props.node.key] ?? [])
+    .filter((node) => nodeMatchesEmailFilter(node, props.emailFilterMode)));
 const childrenId = computed(() => `surface-tree-children-${props.node.key.replace(/[^A-Za-z0-9_-]/g, '-')}`);
 </script>

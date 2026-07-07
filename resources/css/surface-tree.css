@@ -22,6 +22,35 @@
 .surface-tree {
     @apply text-sm;
 
+    & .surface-tree__toolbar {
+        @apply flex justify-end mb-3;
+    }
+
+    & .surface-tree__filter-control {
+        @apply inline-flex items-center gap-1.5 min-w-0;
+    }
+
+    & .surface-tree__filter-icon {
+        @apply size-4 opacity-75;
+    }
+
+    & .surface-tree__filter-icon svg {
+        @apply size-full fill-none stroke-current stroke-[1.75];
+        stroke-linejoin: round;
+    }
+
+    & .surface-tree__filter-label {
+        @apply opacity-65;
+    }
+
+    & .surface-tree__filter-select {
+        @apply border border-current rounded-md bg-transparent text-inherit py-1 pr-7 pl-2;
+
+        & option {
+            @apply bg-gray-800;
+        }
+    }
+
     & .surface-tree__layout {
         @apply grid grid-cols-[minmax(280px,420px)_1fr] gap-4;
     }
@@ -96,6 +125,26 @@
 
     & .surface-tree__corpus-muted {
         @apply m-0 opacity-65;
+    }
+
+    & .surface-tree__email-sections {
+        @apply grid gap-3 mt-3;
+    }
+
+    & .surface-tree__email-list {
+        @apply grid gap-4 mt-4;
+    }
+
+    & .surface-tree__email-body {
+        @apply m-0 whitespace-pre-wrap [overflow-wrap:anywhere];
+    }
+
+    & .surface-tree__email-body p {
+        @apply mt-0 mb-3;
+    }
+
+    & .surface-tree__email-body p:last-child {
+        @apply mb-0;
     }
 
     & .surface-tree__corpus-body {
