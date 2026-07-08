@@ -3,6 +3,8 @@
         <ImpressionCard v-if="state.mode === 'impression_card'" :state="state" />
         <EmailSenderCard v-else-if="state.mode === 'email_sender_card'" :state="state" :email-filter-mode="emailFilterMode" />
         <EmailRecordCard v-else-if="state.mode === 'email_record_card'" :state="state" />
+        <DreamstateListingCard v-else-if="state.mode === 'dreamstate_listing_card'" :state="state" />
+        <DreamstateImpressionCard v-else-if="state.mode === 'dreamstate_impression_card'" :state="state" />
 
         <p v-else-if="state.selectedNodeKey && emailFilterMode !== 'all'">
             The selected email is hidden by the current email filter.
@@ -19,6 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import DreamstateImpressionCard from './DreamstateImpressionCard.vue';
+import DreamstateListingCard from './DreamstateListingCard.vue';
 import EmailRecordCard from './EmailRecordCard.vue';
 import EmailSenderCard from './EmailSenderCard.vue';
 import ImpressionCard from './ImpressionCard.vue';
