@@ -68,7 +68,43 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString("import EmailRecordCard from './EmailRecordCard.vue';", $mainContentHost);
         $this->assertStringContainsString("import EmailSenderCard from './EmailSenderCard.vue';", $mainContentHost);
         $this->assertStringContainsString("import ImpressionCard from './ImpressionCard.vue';", $mainContentHost);
-        $this->assertStringContainsString("mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card';", $types);
+        $this->assertStringContainsString("import DreamstateListingCard from './DreamstateListingCard.vue';", $mainContentHost);
+        $this->assertStringContainsString("import DreamstateImpressionCard from './DreamstateImpressionCard.vue';", $mainContentHost);
+        $this->assertStringContainsString("mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card' | 'dreamstate_listing_card' | 'dreamstate_impression_card';", $types);
+    }
+
+    public function test_dreamstate_impressions_render_as_meaning_first_cards(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $listing = File::get(resource_path('js/components/surface-tree/DreamstateListingCard.vue'));
+        $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // Selecting the dreamstate domain or one of its impressions routes to
+        // the meaning cards, not the generic technical card.
+        $this->assertStringContainsString("mode: 'dreamstate_listing_card'", $browser);
+        $this->assertStringContainsString("mode: 'dreamstate_impression_card'", $browser);
+        $this->assertStringContainsString('DreamstateImpressionCard', $listing);
+
+        // The headline and one-sentence summary are the front door; every
+        // card carries About, Contains, Connections, Evolution, and
+        // Technical Details slots with safe placeholders.
+        $this->assertStringContainsString('surface-tree__dreamstate-title', $card);
+        $this->assertStringContainsString('surface-tree__dreamstate-summary', $card);
+        $this->assertStringContainsString('aria-label="About this impression"', $card);
+        $this->assertStringContainsString('aria-label="Contains"', $card);
+        $this->assertStringContainsString('aria-label="Linked impressions"', $card);
+        $this->assertStringContainsString('aria-label="Evolution state"', $card);
+        $this->assertStringContainsString('aria-label="Technical details"', $card);
+        $this->assertStringContainsString('Open contents', $card);
+        $this->assertStringContainsString('Show connections', $card);
+
+        // Technical IDs stay behind the collapsed section by default.
+        $this->assertStringContainsString('v-if="showTechnical"', $card);
+        $this->assertStringContainsString("const showTechnical = ref(false);", $card);
+
+        // Unknown impressions still resolve to a generic display kind.
+        $this->assertStringContainsString("return { label: 'Unknown', slug: 'unknown' };", $display);
     }
 
     public function test_surface_tree_components_include_readability_class_hooks(): void

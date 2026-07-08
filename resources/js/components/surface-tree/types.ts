@@ -13,7 +13,7 @@ export type SurfaceTreeNode = {
 };
 
 export type SurfaceMainContentState = {
-    mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card';
+    mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card' | 'dreamstate_listing_card' | 'dreamstate_impression_card';
     selectedNodeKey?: string | null;
     impression_id?: string | null;
     payload?: Record<string, unknown>;

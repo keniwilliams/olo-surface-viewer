@@ -191,6 +191,28 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertSame('file', $dreamstate[0]->meta['kind']);
     }
 
+    public function test_dreamstate_impressions_carry_a_one_sentence_summary_from_the_raw_corpus(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow(
+                'dream-with-corpus',
+                null,
+                rawCorpus: "# Weekly notes\n\nThe deployment pipeline was reworked to publish scene payloads nightly. Further detail follows in later paragraphs.",
+            ),
+            $this->dreamstateRow('dream-without-corpus', null, observedAt: '2026-07-04 12:00:00'),
+        ]);
+
+        $dreamstate = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3);
+
+        $this->assertSame(
+            'Weekly notes The deployment pipeline was reworked to publish scene payloads nightly.',
+            $dreamstate[0]->meta['summary'],
+        );
+        $this->assertArrayNotHasKey('summary', $dreamstate[1]->meta);
+    }
+
     public function test_domain_traverser_splits_camera_lens_into_scenes_and_telemetry_folders(): void
     {
         $folders = app(DomainImpressionsTraverser::class)->children('domain:camera_lens', 0, 3);

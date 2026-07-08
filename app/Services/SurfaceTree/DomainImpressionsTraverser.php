@@ -3,6 +3,7 @@
 namespace App\Services\SurfaceTree;
 
 use App\Services\SurfaceTree\Concerns\BuildsSurfaceTreeNodes;
+use Illuminate\Support\Str;
 
 /**
  * Traverser for the dreamstate and camera_lens domain roots. Dreamstate has
@@ -113,6 +114,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     'source_ref' => $this->value($row, ['source_ref']),
                     'source_path' => $this->value($row, ['source_path']),
                     'schema' => $this->value($row, ['schema']),
+                    'summary' => $domain === 'dreamstate' ? $this->corpusSummary($row) : null,
                 ],
             );
 
@@ -161,6 +163,33 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
         }
 
         return array_values($records);
+    }
+
+    /**
+     * One-sentence plain-text summary of an impression's raw corpus so the
+     * dreamstate cards can lead with meaning instead of identifiers. Only the
+     * head of the corpus is inspected; markdown punctuation is stripped.
+     */
+    private function corpusSummary(mixed $row): ?string
+    {
+        $corpus = $this->rowValue($row, 'raw_corpus');
+
+        if (! is_string($corpus)) {
+            return null;
+        }
+
+        $text = preg_replace('/[#*_>`|\[\]]+/', ' ', substr($corpus, 0, 2000));
+        $text = trim(preg_replace('/\s+/', ' ', $text ?? ''));
+
+        if ($text === '') {
+            return null;
+        }
+
+        if (preg_match('/^.{20,}?[.!?](?=\s|$)/u', $text, $matches)) {
+            $text = $matches[0];
+        }
+
+        return Str::limit($text, 200);
     }
 
     private function domainFromNodeKey(string $nodeKey): ?string
