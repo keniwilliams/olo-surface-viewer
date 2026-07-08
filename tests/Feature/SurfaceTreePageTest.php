@@ -107,6 +107,36 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString("return { label: 'Unknown', slug: 'unknown' };", $display);
     }
 
+    public function test_dreamstate_display_kind_comes_from_the_resolved_memory_kind_only(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The card feeds only the backend-resolved memory_kind into the
+        // display-kind map; the known feed kinds render as human labels.
+        $this->assertStringContainsString("displayKindFor(asString(valueFromPayload(['memory_kind'])))", $card);
+        $this->assertStringContainsString("email: 'Email',", $display);
+        $this->assertStringContainsString("code: 'Code',", $display);
+        $this->assertStringContainsString("evidence: 'Evidence',", $display);
+        $this->assertStringContainsString("context: 'Context',", $display);
+        $this->assertStringContainsString("readme: 'Readme',", $display);
+        $this->assertStringContainsString("living_document: 'Living document',", $display);
+        $this->assertStringContainsString("canon_document: 'Canon document',", $display);
+
+        // No Vue-side provenance guessing from ids, source refs, schema
+        // strings, or text shape.
+        $this->assertStringNotContainsString('sourceRef', $display);
+        $this->assertStringNotContainsString('sourcePath', $display);
+        $this->assertStringNotContainsString('schema', $display);
+        $this->assertStringNotContainsString('EXTENSIONS', $display);
+
+        // Provenance resolution status stays behind the collapsed technical
+        // section.
+        $this->assertStringContainsString("{ label: 'memory kind', value: asString(valueFromPayload(['memory_kind'])) }", $card);
+        $this->assertStringContainsString("{ label: 'contract version', value: asString(valueFromPayload(['contract_version'])) }", $card);
+        $this->assertStringContainsString('provenance_resolution_error', $card);
+    }
+
     public function test_surface_tree_components_include_readability_class_hooks(): void
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));

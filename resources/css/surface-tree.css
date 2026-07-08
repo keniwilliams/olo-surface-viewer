@@ -177,6 +177,19 @@
         @apply bg-amber-950 text-amber-300;
     }
 
+    & .surface-tree__dreamstate-kind--readme {
+        @apply bg-cyan-950 text-cyan-300;
+    }
+
+    & .surface-tree__dreamstate-kind--living_document,
+    & .surface-tree__dreamstate-kind--canon_document {
+        @apply bg-indigo-950 text-indigo-300;
+    }
+
+    & .surface-tree__dreamstate-kind--manifest {
+        @apply bg-teal-950 text-teal-300;
+    }
+
     & .surface-tree__dreamstate-observed {
         @apply m-0 text-xs opacity-65;
     }

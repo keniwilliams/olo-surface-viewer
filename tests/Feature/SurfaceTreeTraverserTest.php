@@ -191,6 +191,66 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertSame('file', $dreamstate[0]->meta['kind']);
     }
 
+    public function test_dreamstate_impressions_resolve_memory_kind_from_the_impressions_feed(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-email', null, memoryKind: 'email', sourceRef: 'imap://inbox/42'),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('email', $node->meta['memory_kind']);
+        $this->assertSame('imap://inbox/42', $node->meta['memory_source_ref']);
+        $this->assertSame('impressions_dreamstate_feed_v1', $node->meta['contract_version']);
+        $this->assertTrue($node->meta['provenance_resolved']);
+        $this->assertArrayNotHasKey('provenance_resolution_error', $node->meta);
+    }
+
+    public function test_dreamstate_provenance_is_unresolved_when_the_feed_contract_version_is_unexpected(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-drifted', null, memoryKind: 'email', contractVersion: 'impressions_dreamstate_feed_v2'),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertFalse($node->meta['provenance_resolved']);
+        $this->assertArrayNotHasKey('memory_kind', $node->meta);
+        $this->assertStringContainsString('contract_version', $node->meta['provenance_resolution_error']);
+    }
+
+    public function test_dreamstate_listing_survives_when_the_impressions_feed_is_missing(): void
+    {
+        // Only the legacy source from setUp exists (no feed table); the
+        // listing still renders and every impression is reported unresolved
+        // instead of guessed at.
+        DB::connection('impressions')->table('sensemade_impressions')->insert([
+            [
+                'impression_id' => 'dream-legacy',
+                'domain' => 'dreamstate',
+                'label' => 'Legacy impression',
+                'kind' => 'file',
+                'status' => 'observed',
+                'source_path' => null,
+                'source_ref' => null,
+                'thread_id' => null,
+                'observed_at' => '2026-07-06 12:00:00',
+            ],
+        ]);
+
+        $nodes = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3);
+        $node = collect($nodes)->firstWhere('key', 'impression:dream-legacy');
+
+        $this->assertNotNull($node);
+        $this->assertFalse($node->meta['provenance_resolved']);
+        $this->assertArrayNotHasKey('memory_kind', $node->meta);
+        $this->assertSame('impressions_dreamstate_feed is not available', $node->meta['provenance_resolution_error']);
+    }
+
     public function test_dreamstate_impressions_carry_a_one_sentence_summary_from_the_raw_corpus(): void
     {
         $this->createDreamstateFeedTable();
@@ -589,9 +649,11 @@ class SurfaceTreeTraverserTest extends TestCase
             $table->string('domain')->nullable();
             $table->string('label')->nullable();
             $table->string('kind')->nullable();
+            $table->string('memory_kind')->nullable();
             $table->string('status')->nullable();
             $table->string('source_path')->nullable();
             $table->string('source_ref')->nullable();
+            $table->string('contract_version')->nullable();
             $table->text('raw_corpus')->nullable();
             $table->timestampTz('observed_at')->nullable();
         });
@@ -647,15 +709,20 @@ class SurfaceTreeTraverserTest extends TestCase
         string $domain = 'filesystem',
         string $observedAt = '2026-07-05 12:00:00',
         ?string $rawCorpus = null,
+        ?string $memoryKind = null,
+        ?string $sourceRef = null,
+        ?string $contractVersion = 'impressions_dreamstate_feed_v1',
     ): array {
         return [
             'impression_id' => $impressionId,
             'domain' => $domain,
             'label' => null,
             'kind' => 'file',
+            'memory_kind' => $memoryKind,
             'status' => 'observed',
             'source_path' => $sourcePath,
-            'source_ref' => null,
+            'source_ref' => $sourceRef,
+            'contract_version' => $contractVersion,
             'raw_corpus' => $rawCorpus,
             'observed_at' => $observedAt,
         ];
