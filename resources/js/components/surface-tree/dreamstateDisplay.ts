@@ -62,6 +62,47 @@ export function evolutionFor(status: string | null | undefined): DreamstateEvolu
     return null;
 }
 
+export type DreamstateContains = {
+    available: boolean;
+    contentKind: 'email' | 'code' | 'document' | 'unknown';
+    title: string | null;
+    sourceLabel: string | null;
+    excerpt: string | null;
+    items: string[];
+    emailFrom: string | null;
+    emailSubject: string | null;
+    emailDate: string | null;
+    emailExcerpt: string | null;
+};
+
+// Reads the contains_* fields the backend presenter normalised into node
+// meta. This is a typed reader only — the shape of the contents was decided
+// server-side, and nothing here inspects raw payloads or identifiers.
+export function containsFrom(meta: Record<string, unknown>): DreamstateContains {
+    const contentKind = meta.contains_content_kind;
+
+    return {
+        available: meta.contains_available === true,
+        contentKind: contentKind === 'email' || contentKind === 'code' || contentKind === 'document' ? contentKind : 'unknown',
+        title: metaString(meta, 'contains_title'),
+        sourceLabel: metaString(meta, 'contains_source_label'),
+        excerpt: metaString(meta, 'contains_excerpt'),
+        items: Array.isArray(meta.contains_items)
+            ? meta.contains_items.filter((item): item is string => typeof item === 'string' && item !== '')
+            : [],
+        emailFrom: metaString(meta, 'email_from'),
+        emailSubject: metaString(meta, 'email_subject'),
+        emailDate: metaString(meta, 'email_date'),
+        emailExcerpt: metaString(meta, 'email_excerpt'),
+    };
+}
+
+function metaString(meta: Record<string, unknown>, key: string): string | null {
+    const value = meta[key];
+
+    return typeof value === 'string' && value !== '' ? value : null;
+}
+
 // Linked impressions may arrive as an array of ids or of objects; anything
 // else is treated as no connections so unknown shapes render safely.
 export function linkedImpressionsFrom(meta: Record<string, unknown>): { id: string | null; label: string }[] {

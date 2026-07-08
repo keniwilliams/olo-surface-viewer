@@ -234,6 +234,22 @@
         @apply m-0 text-xs uppercase tracking-wide opacity-65;
     }
 
+    & .surface-tree__dreamstate-source-label {
+        @apply m-0 text-xs font-medium text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-excerpt {
+        @apply m-0 leading-6 opacity-90 [overflow-wrap:anywhere];
+    }
+
+    & .surface-tree__dreamstate-items {
+        @apply m-0 flex list-none flex-wrap gap-1.5 pl-0;
+
+        & li {
+            @apply rounded-md bg-gray-800 px-2 py-0.5 text-xs text-gray-200;
+        }
+    }
+
     & .surface-tree__dreamstate-links {
         @apply m-0 grid list-none gap-1 pl-0;
 

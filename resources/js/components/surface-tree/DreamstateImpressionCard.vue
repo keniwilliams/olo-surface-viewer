@@ -33,13 +33,44 @@
             </button>
         </div>
 
-        <section v-if="showContents" class="surface-tree__dreamstate-section" aria-label="Contains">
+        <section class="surface-tree__dreamstate-section" aria-label="Contains">
             <h3 class="surface-tree__dreamstate-section-title">Contains</h3>
-            <p v-if="isLoadingCorpus" class="surface-tree__corpus-muted">Opening contents...</p>
-            <p v-else-if="corpusError" class="surface-tree__corpus-muted" role="alert">{{ corpusError }}</p>
-            <p v-else-if="!compiledCorpus" class="surface-tree__corpus-muted">This impression has no readable contents.</p>
-            <!-- Read-only rendered markdown; the corpus is never editable here. -->
-            <div v-else class="surface-tree__corpus-body" v-html="compiledCorpus"></div>
+
+            <template v-if="contains.contentKind === 'email' && hasEmailShape">
+                <dl class="surface-tree__details">
+                    <div v-if="contains.emailFrom" class="surface-tree__detail-row">
+                        <dt class="surface-tree__detail-label">from</dt>
+                        <dd class="surface-tree__detail-value">{{ contains.emailFrom }}</dd>
+                    </div>
+                    <div v-if="contains.emailSubject" class="surface-tree__detail-row">
+                        <dt class="surface-tree__detail-label">subject</dt>
+                        <dd class="surface-tree__detail-value">{{ contains.emailSubject }}</dd>
+                    </div>
+                    <div v-if="formattedEmailDate" class="surface-tree__detail-row">
+                        <dt class="surface-tree__detail-label">date</dt>
+                        <dd class="surface-tree__detail-value">{{ formattedEmailDate }}</dd>
+                    </div>
+                </dl>
+                <p v-if="contains.emailExcerpt" class="surface-tree__dreamstate-excerpt">{{ contains.emailExcerpt }}</p>
+            </template>
+
+            <template v-else-if="contains.available">
+                <p v-if="contains.sourceLabel" class="surface-tree__dreamstate-source-label">{{ contains.sourceLabel }}</p>
+                <p v-if="contains.excerpt" class="surface-tree__dreamstate-excerpt">{{ contains.excerpt }}</p>
+                <ul v-if="contains.items.length > 0" class="surface-tree__dreamstate-items" aria-label="Mentions">
+                    <li v-for="item in contains.items" :key="item">{{ item }}</li>
+                </ul>
+            </template>
+
+            <p v-else class="surface-tree__corpus-muted">No contents summary available yet.</p>
+
+            <template v-if="showContents">
+                <p v-if="isLoadingCorpus" class="surface-tree__corpus-muted">Opening contents...</p>
+                <p v-else-if="corpusError" class="surface-tree__corpus-muted" role="alert">{{ corpusError }}</p>
+                <p v-else-if="!compiledCorpus" class="surface-tree__corpus-muted">This impression has no readable contents.</p>
+                <!-- Read-only rendered markdown; the corpus is never editable here. -->
+                <div v-else class="surface-tree__corpus-body" v-html="compiledCorpus"></div>
+            </template>
         </section>
 
         <section v-if="showConnections" class="surface-tree__dreamstate-section" aria-label="Linked impressions">
@@ -70,7 +101,7 @@
 import { computed, ref, watch } from 'vue';
 import { marked } from 'marked';
 import { formatDateTime } from '../../support/dateFormatter';
-import { displayKindFor, evolutionFor, linkedImpressionsFrom } from './dreamstateDisplay';
+import { containsFrom, displayKindFor, evolutionFor, linkedImpressionsFrom } from './dreamstateDisplay';
 import type { SurfaceMainContentState } from './types';
 
 const props = defineProps<{
@@ -97,6 +128,17 @@ const formattedObservedAt = computed(() => observedAt.value ? formatDateTime(obs
 const displayKind = computed(() => displayKindFor(asString(valueFromPayload(['memory_kind']))));
 
 const evolution = computed(() => evolutionFor(asString(valueFromPayload(['status', 'process_status', 'processStatus']))));
+
+// The Contains section renders only the fields the backend presenter
+// normalised — never raw payloads or identifiers.
+const contains = computed(() => containsFrom(meta.value));
+const hasEmailShape = computed(() => Boolean(
+    contains.value.emailFrom
+    || contains.value.emailSubject
+    || contains.value.emailDate
+    || contains.value.emailExcerpt,
+));
+const formattedEmailDate = computed(() => contains.value.emailDate ? formatDateTime(contains.value.emailDate) : null);
 
 // Reports whether the backend managed to resolve this impression's
 // provenance against the Impressions feed, for the technical section only.
