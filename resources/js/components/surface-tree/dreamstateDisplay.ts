@@ -1,8 +1,8 @@
 import type { SurfaceTreeNode } from './types';
 
 export type DreamstateDisplayKind = {
-    label: 'Email' | 'Code' | 'Evidence' | 'Context' | 'Unknown';
-    slug: 'email' | 'code' | 'evidence' | 'context' | 'unknown';
+    label: string;
+    slug: string;
 };
 
 export type DreamstateEvolution = {
@@ -10,52 +10,32 @@ export type DreamstateEvolution = {
     label: string;
 };
 
-const CODE_EXTENSIONS = /\.(php|js|jsx|ts|tsx|vue|py|rb|go|rs|java|kt|cs|cpp|cc|c|h|hpp|swift|sh|ps1|bat|sql|css|scss|html|json|ya?ml|toml)$/i;
+// Human labels for the memory_kind values the Impressions feed publishes.
+// The backend resolves memory_kind from impressions_dreamstate_feed; this
+// map only translates an already-resolved kind into a UI label — it never
+// guesses provenance from other technical fields or text shape.
+const MEMORY_KIND_LABELS: Record<string, string> = {
+    email: 'Email',
+    living_document: 'Living document',
+    canon_document: 'Canon document',
+    manifest: 'Manifest',
+    evidence: 'Evidence',
+    context: 'Context',
+    readme: 'Readme',
+    code: 'Code',
+    asset: 'Asset',
+    binary: 'Binary',
+};
 
-const CONTEXT_EXTENSIONS = /\.(md|markdown|txt|rst|org|log|csv)$/i;
+export function displayKindFor(memoryKind: string | null | undefined): DreamstateDisplayKind {
+    const kind = (memoryKind ?? '').trim().toLowerCase();
+    const label = MEMORY_KIND_LABELS[kind];
 
-// Maps the technical kind/schema/source fields onto the handful of
-// human display kinds the meaning cards lead with. Order matters: the
-// most specific signals win, and anything unrecognised stays Unknown.
-export function displayKindFor(fields: {
-    kind?: string | null;
-    schema?: string | null;
-    sourceRef?: string | null;
-    sourcePath?: string | null;
-}): DreamstateDisplayKind {
-    const kind = (fields.kind ?? '').toLowerCase();
-    const schema = (fields.schema ?? '').toLowerCase();
-    const source = `${fields.sourceRef ?? ''} ${fields.sourcePath ?? ''}`.toLowerCase().trim();
-
-    if (kind.includes('email') || kind.includes('mail') || schema.includes('email') || /@[a-z0-9.-]+\.[a-z]{2,}/.test(source)) {
-        return { label: 'Email', slug: 'email' };
+    if (!label) {
+        return { label: 'Unknown', slug: 'unknown' };
     }
 
-    if (kind.includes('code') || CODE_EXTENSIONS.test(source)) {
-        return { label: 'Code', slug: 'code' };
-    }
-
-    if (
-        kind.includes('evidence')
-        || kind.includes('telemetry')
-        || kind.includes('scene')
-        || schema.includes('evidence')
-        || schema.includes('camera')
-    ) {
-        return { label: 'Evidence', slug: 'evidence' };
-    }
-
-    if (
-        kind.includes('context')
-        || kind.includes('note')
-        || kind === 'file'
-        || kind.includes('document')
-        || CONTEXT_EXTENSIONS.test(source)
-    ) {
-        return { label: 'Context', slug: 'context' };
-    }
-
-    return { label: 'Unknown', slug: 'unknown' };
+    return { label, slug: kind };
 }
 
 // Reads the pipeline status as a human evolution statement. Unrecognised

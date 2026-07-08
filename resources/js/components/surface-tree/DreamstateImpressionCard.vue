@@ -92,14 +92,27 @@ const summary = computed(() => asString(valueFromPayload(['summary'])));
 const observedAt = computed(() => asString(valueFromPayload(['observed_at', 'observed_time', 'observedTime'])));
 const formattedObservedAt = computed(() => observedAt.value ? formatDateTime(observedAt.value) : null);
 
-const displayKind = computed(() => displayKindFor({
-    kind: asString(valueFromPayload(['kind', 'memory_kind', 'memoryKind'])),
-    schema: asString(valueFromPayload(['schema'])),
-    sourceRef: asString(valueFromPayload(['source_ref', 'sourceRef'])),
-    sourcePath: asString(valueFromPayload(['source_path', 'sourcePath'])),
-}));
+// The display kind comes solely from the memory_kind the backend resolved
+// via impressions_dreamstate_feed; unresolved impressions stay Unknown.
+const displayKind = computed(() => displayKindFor(asString(valueFromPayload(['memory_kind']))));
 
 const evolution = computed(() => evolutionFor(asString(valueFromPayload(['status', 'process_status', 'processStatus']))));
+
+// Reports whether the backend managed to resolve this impression's
+// provenance against the Impressions feed, for the technical section only.
+const provenanceStatus = computed(() => {
+    if (meta.value.provenance_resolved === true) {
+        return 'resolved via impressions_dreamstate_feed';
+    }
+
+    if (meta.value.provenance_resolved === false) {
+        const error = asString(meta.value.provenance_resolution_error);
+
+        return error ? `unresolved (${error})` : 'unresolved';
+    }
+
+    return null;
+});
 const linkedImpressions = computed(() => linkedImpressionsFrom(meta.value));
 
 const showContents = ref(false);
@@ -125,7 +138,11 @@ const technicalFields = computed(() => [
     { label: 'impression id', value: impressionId.value },
     { label: 'node key', value: asString(payload.value.key) },
     { label: 'domain', value: asString(valueFromPayload(['domain'])) },
-    { label: 'kind', value: asString(valueFromPayload(['kind', 'memory_kind'])) },
+    { label: 'memory kind', value: asString(valueFromPayload(['memory_kind'])) },
+    { label: 'memory source ref', value: asString(valueFromPayload(['memory_source_ref'])) },
+    { label: 'contract version', value: asString(valueFromPayload(['contract_version'])) },
+    { label: 'provenance', value: provenanceStatus.value },
+    { label: 'kind', value: asString(valueFromPayload(['kind'])) },
     { label: 'status', value: asString(valueFromPayload(['status', 'process_status'])) },
     { label: 'schema', value: asString(valueFromPayload(['schema'])) },
     { label: 'source ref', value: asString(valueFromPayload(['source_ref'])) },

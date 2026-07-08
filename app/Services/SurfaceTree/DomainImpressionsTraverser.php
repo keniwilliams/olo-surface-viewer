@@ -26,6 +26,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
     public function __construct(
         private readonly DomainImpressionsFeed $feed,
         private readonly CameraLensTelemetryFeed $telemetryFeed,
+        private readonly DreamstateProvenanceResolver $provenance,
     ) {}
 
     /**
@@ -89,16 +90,25 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
     {
         $childDepth = $fromDepth + 1;
         $impressions = [];
+        $rowsById = [];
 
         foreach ($this->feed->latestRowsForDomain($domain) as $row) {
             $impressionId = $this->value($row, ['impression_id', 'uuid', 'id', 'housed_source_id']);
 
-            if ($impressionId === null) {
-                continue;
+            if ($impressionId !== null && ! array_key_exists($impressionId, $rowsById)) {
+                $rowsById[$impressionId] = $row;
             }
+        }
 
+        // Dreamstate rows only retain lineage; their type identity is
+        // resolved back through the canonical Impressions feed in one batch.
+        $provenanceById = $domain === 'dreamstate'
+            ? $this->provenance->resolveMany(array_keys($rowsById))
+            : [];
+
+        foreach ($rowsById as $impressionId => $row) {
             $impression = $this->impressionNode(
-                impressionId: $impressionId,
+                impressionId: (string) $impressionId,
                 label: $this->value($row, ['label', 'title', 'name'])
                     ?? $this->titleFromIdentifier(
                         $this->value($row, ['source_ref', 'source_path', 'schema']),
@@ -115,6 +125,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     'source_path' => $this->value($row, ['source_path']),
                     'schema' => $this->value($row, ['schema']),
                     'summary' => $domain === 'dreamstate' ? $this->corpusSummary($row) : null,
+                    ...($provenanceById[$impressionId] ?? []),
                 ],
             );
 
