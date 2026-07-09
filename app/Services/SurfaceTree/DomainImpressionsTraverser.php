@@ -3,6 +3,7 @@
 namespace App\Services\SurfaceTree;
 
 use App\Services\SurfaceTree\Concerns\BuildsSurfaceTreeNodes;
+use Illuminate\Support\Str;
 
 /**
  * Traverser for the dreamstate and camera_lens domain roots. Dreamstate has
@@ -25,6 +26,10 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
     public function __construct(
         private readonly DomainImpressionsFeed $feed,
         private readonly CameraLensTelemetryFeed $telemetryFeed,
+        private readonly DreamstateProvenanceResolver $provenance,
+        private readonly DreamstateEvolutionResolver $evolution,
+        private readonly DreamstateContainsPresenter $contains,
+        private readonly DreamstateConnectionsPresenter $connections,
     ) {}
 
     /**
@@ -88,16 +93,62 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
     {
         $childDepth = $fromDepth + 1;
         $impressions = [];
+        $rowsById = [];
 
         foreach ($this->feed->latestRowsForDomain($domain) as $row) {
             $impressionId = $this->value($row, ['impression_id', 'uuid', 'id', 'housed_source_id']);
 
-            if ($impressionId === null) {
-                continue;
+            if ($impressionId !== null && ! array_key_exists($impressionId, $rowsById)) {
+                $rowsById[$impressionId] = $row;
             }
+        }
 
+        // Dreamstate rows only retain lineage; their type identity is
+        // resolved back through the canonical Impressions feed in one batch.
+        $provenanceById = $domain === 'dreamstate'
+            ? $this->provenance->resolveMany(array_keys($rowsById))
+            : [];
+
+        // How far each impression moved through Dreamstate, from the
+        // subconscious lineage tables, also in one batch per source.
+        $evolutionById = $domain === 'dreamstate'
+            ? $this->evolution->resolveMany(array_map(strval(...), array_keys($rowsById)))
+            : [];
+
+        $emailsByReference = $domain === 'dreamstate'
+            ? $this->contains->emailRowsByReference($this->emailReferences($rowsById, $provenanceById))
+            : [];
+
+        $emailRowsById = [];
+
+        foreach ($rowsById as $impressionId => $row) {
+            $emailRowsById[$impressionId] = $this->emailRowFor($row, $emailsByReference);
+        }
+
+        // Grouped plain-language connection summaries, from the listing rows
+        // plus batched sidecar/subconscious counts.
+        $connectionsById = $domain === 'dreamstate'
+            ? $this->connections->resolveMany($rowsById, $evolutionById, $emailRowsById)
+            : [];
+
+        // Which database view fed this listing — technical-drawer receipt.
+        $sourceView = $domain === 'dreamstate' && $rowsById !== []
+            ? $this->feed->sourceViewForDomain($domain)
+            : null;
+
+        foreach ($rowsById as $impressionId => $row) {
+            $rowProvenance = $provenanceById[$impressionId] ?? [];
+            $memoryKind = $rowProvenance['memory_kind'] ?? null;
+
+            $containsMeta = $domain === 'dreamstate'
+                ? $this->contains->containsMetaFor(
+                    $row,
+                    is_string($memoryKind) ? $memoryKind : null,
+                    $emailRowsById[$impressionId] ?? null,
+                )
+                : [];
             $impression = $this->impressionNode(
-                impressionId: $impressionId,
+                impressionId: (string) $impressionId,
                 label: $this->value($row, ['label', 'title', 'name'])
                     ?? $this->titleFromIdentifier(
                         $this->value($row, ['source_ref', 'source_path', 'schema']),
@@ -113,6 +164,12 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     'source_ref' => $this->value($row, ['source_ref']),
                     'source_path' => $this->value($row, ['source_path']),
                     'schema' => $this->value($row, ['schema']),
+                    'summary' => $domain === 'dreamstate' ? $this->corpusSummary($row) : null,
+                    'source_view' => $sourceView,
+                    ...$containsMeta,
+                    ...$rowProvenance,
+                    ...($evolutionById[$impressionId] ?? []),
+                    ...($connectionsById[$impressionId] ?? []),
                 ],
             );
 
@@ -161,6 +218,80 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
         }
 
         return array_values($records);
+    }
+
+    /**
+     * Source references of the email-kind impressions in one listing, so the
+     * contains presenter can enrich them from sidecar in a single batch.
+     *
+     * @param  array<int|string, mixed>  $rowsById
+     * @param  array<int|string, array<string, mixed>>  $provenanceById
+     * @return list<string>
+     */
+    private function emailReferences(array $rowsById, array $provenanceById): array
+    {
+        $references = [];
+
+        foreach ($rowsById as $impressionId => $row) {
+            if (($provenanceById[$impressionId]['memory_kind'] ?? null) !== 'email') {
+                continue;
+            }
+
+            $reference = $this->value($row, ['source_ref']);
+
+            if ($reference !== null) {
+                $references[$reference] = true;
+            }
+        }
+
+        // Array keys coerce numeric references to ints; the presenter
+        // expects strings.
+        return array_map(strval(...), array_keys($references));
+    }
+
+    /**
+     * @param  array<string, object>  $emailsByReference
+     */
+    private function emailRowFor(mixed $row, array $emailsByReference): ?object
+    {
+        if ($emailsByReference === []) {
+            return null;
+        }
+
+        $reference = $this->value($row, ['source_ref']);
+
+        if ($reference === null) {
+            return null;
+        }
+
+        return $emailsByReference[$reference] ?? null;
+    }
+
+    /**
+     * One-sentence plain-text summary of an impression's raw corpus so the
+     * dreamstate cards can lead with meaning instead of identifiers. Only the
+     * head of the corpus is inspected; markdown punctuation is stripped.
+     */
+    private function corpusSummary(mixed $row): ?string
+    {
+        $corpus = $this->rowValue($row, 'raw_corpus');
+
+        if (! is_string($corpus)) {
+            return null;
+        }
+
+        $text = preg_replace('/[#*_>`|\[\]]+/', ' ', substr($corpus, 0, 2000));
+        $text = trim(preg_replace('/\s+/', ' ', $text ?? ''));
+
+        if ($text === '') {
+            return null;
+        }
+
+        if (preg_match('/^.{20,}?[.!?](?=\s|$)/u', $text, $matches)) {
+            $text = $matches[0];
+        }
+
+        return Str::limit($text, 200);
     }
 
     private function domainFromNodeKey(string $nodeKey): ?string

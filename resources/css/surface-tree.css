@@ -132,6 +132,201 @@
         @apply m-0 opacity-65;
     }
 
+    & .surface-tree__dreamstate-intro {
+        @apply m-0 mb-4 opacity-65;
+    }
+
+    & .surface-tree__dreamstate-list {
+        @apply grid gap-4;
+    }
+
+    & .surface-tree__dreamstate-lenses {
+        @apply mb-4 flex flex-wrap gap-2;
+    }
+
+    & .surface-tree__dreamstate-lens {
+        @apply cursor-pointer rounded-full border border-gray-700 bg-transparent px-3 py-1 text-sm text-inherit opacity-75;
+
+        &:hover {
+            @apply bg-gray-800 opacity-100;
+        }
+    }
+
+    & .surface-tree__dreamstate-lens--active {
+        @apply border-emerald-800 bg-emerald-950 font-medium text-emerald-300 opacity-100;
+    }
+
+    & .surface-tree__dreamstate-lens-group {
+        @apply grid gap-3;
+    }
+
+    & .surface-tree__dreamstate-lens-group-title {
+        @apply m-0 flex items-baseline gap-2 text-sm font-semibold text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-lens-group-count {
+        @apply rounded-full bg-gray-800 px-2 py-0.5 text-xs font-normal text-gray-300;
+    }
+
+    & .surface-tree__dreamstate-card {
+        @apply grid gap-3 rounded-lg p-4;
+        background-color: var(--gray-900);
+    }
+
+    & .surface-tree__dreamstate-header {
+        @apply grid gap-1;
+    }
+
+    & .surface-tree__dreamstate-heading {
+        @apply flex items-center gap-2.5 flex-wrap;
+    }
+
+    & .surface-tree__dreamstate-title {
+        @apply m-0 text-base font-semibold text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-kind {
+        @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wide bg-gray-700 text-gray-200;
+    }
+
+    & .surface-tree__dreamstate-kind--email {
+        @apply bg-sky-950 text-sky-300;
+    }
+
+    & .surface-tree__dreamstate-kind--code {
+        @apply bg-violet-950 text-violet-300;
+    }
+
+    & .surface-tree__dreamstate-kind--evidence {
+        @apply bg-emerald-950 text-emerald-300;
+    }
+
+    & .surface-tree__dreamstate-kind--context {
+        @apply bg-amber-950 text-amber-300;
+    }
+
+    & .surface-tree__dreamstate-kind--readme {
+        @apply bg-cyan-950 text-cyan-300;
+    }
+
+    & .surface-tree__dreamstate-kind--living_document,
+    & .surface-tree__dreamstate-kind--canon_document {
+        @apply bg-indigo-950 text-indigo-300;
+    }
+
+    & .surface-tree__dreamstate-kind--manifest {
+        @apply bg-teal-950 text-teal-300;
+    }
+
+    & .surface-tree__dreamstate-observed {
+        @apply m-0 text-xs opacity-65;
+    }
+
+    & .surface-tree__dreamstate-summary {
+        @apply m-0 leading-6;
+    }
+
+    & .surface-tree__dreamstate-evolution {
+        @apply grid gap-1.5;
+    }
+
+    & .surface-tree__dreamstate-evolution-path {
+        @apply m-0 flex flex-wrap items-center gap-1.5;
+    }
+
+    & .surface-tree__dreamstate-evolution-step {
+        @apply rounded-full bg-gray-800 px-2.5 py-0.5 text-xs text-gray-200;
+    }
+
+    & .surface-tree__dreamstate-evolution-step--current {
+        @apply bg-emerald-950 font-medium text-emerald-300;
+    }
+
+    & .surface-tree__dreamstate-evolution-arrow {
+        @apply text-xs opacity-65;
+    }
+
+    & .surface-tree__dreamstate-section-label {
+        @apply mr-1.5 uppercase tracking-wide opacity-65;
+    }
+
+    & .surface-tree__dreamstate-actions {
+        @apply flex flex-wrap gap-2;
+    }
+
+    & .surface-tree__dreamstate-action {
+        @apply cursor-pointer rounded-md border border-gray-700 bg-transparent px-2.5 py-1 text-xs text-inherit;
+
+        &:hover {
+            @apply bg-gray-800;
+        }
+    }
+
+    & .surface-tree__dreamstate-section {
+        @apply grid gap-1.5;
+    }
+
+    & .surface-tree__dreamstate-section-title {
+        @apply m-0 text-xs uppercase tracking-wide opacity-65;
+    }
+
+    & .surface-tree__dreamstate-source-label {
+        @apply m-0 text-xs font-medium text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-excerpt {
+        @apply m-0 leading-6 opacity-90 [overflow-wrap:anywhere];
+    }
+
+    & .surface-tree__dreamstate-items {
+        @apply m-0 flex list-none flex-wrap gap-1.5 pl-0;
+
+        & li {
+            @apply rounded-md bg-gray-800 px-2 py-0.5 text-xs text-gray-200;
+        }
+    }
+
+    & .surface-tree__dreamstate-technical-value {
+        @apply m-0 flex items-baseline justify-between gap-2;
+    }
+
+    & .surface-tree__dreamstate-technical-text {
+        @apply [overflow-wrap:anywhere];
+    }
+
+    & .surface-tree__dreamstate-copy {
+        @apply shrink-0 cursor-pointer rounded-md border border-gray-700 bg-transparent px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-inherit opacity-75;
+
+        &:hover {
+            @apply bg-gray-800 opacity-100;
+        }
+    }
+
+    & .surface-tree__dreamstate-raw {
+        @apply m-0 max-h-64 overflow-auto rounded-lg p-3 text-xs leading-5 [overflow-wrap:anywhere];
+        background-color: var(--gray-900);
+
+        & code {
+            @apply whitespace-pre-wrap;
+        }
+    }
+
+    & .surface-tree__dreamstate-connections {
+        @apply m-0 grid list-none gap-1.5 pl-0;
+    }
+
+    & .surface-tree__dreamstate-connection {
+        @apply flex items-baseline gap-2;
+    }
+
+    & .surface-tree__dreamstate-connection-count {
+        @apply min-w-6 rounded-full bg-gray-800 px-2 py-0.5 text-center text-xs font-medium text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-connection-label {
+        @apply leading-6;
+    }
+
     & .surface-tree__email-sections {
         @apply grid gap-3 mt-3;
     }

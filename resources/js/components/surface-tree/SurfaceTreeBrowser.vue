@@ -38,6 +38,27 @@ const handleSurfaceTreeSelect = (event: Event) => {
         return;
     }
 
+    if (node.type === 'domain' && node.domain === 'dreamstate') {
+        mainContentState.value = {
+            mode: 'dreamstate_listing_card',
+            selectedNodeKey: node.key,
+            payload: nodePayload(node),
+        };
+
+        return;
+    }
+
+    if (node.type === 'impression' && node.domain === 'dreamstate') {
+        mainContentState.value = {
+            mode: 'dreamstate_impression_card',
+            selectedNodeKey: node.key,
+            impression_id: node.impression_id ?? null,
+            payload: nodePayload(node),
+        };
+
+        return;
+    }
+
     if (node.type === 'folder' && node.domain === 'email' && node.relation === 'from_sender') {
         mainContentState.value = {
             mode: 'email_sender_card',

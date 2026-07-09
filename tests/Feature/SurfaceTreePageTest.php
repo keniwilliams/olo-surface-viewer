@@ -68,7 +68,215 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString("import EmailRecordCard from './EmailRecordCard.vue';", $mainContentHost);
         $this->assertStringContainsString("import EmailSenderCard from './EmailSenderCard.vue';", $mainContentHost);
         $this->assertStringContainsString("import ImpressionCard from './ImpressionCard.vue';", $mainContentHost);
-        $this->assertStringContainsString("mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card';", $types);
+        $this->assertStringContainsString("import DreamstateListingCard from './DreamstateListingCard.vue';", $mainContentHost);
+        $this->assertStringContainsString("import DreamstateImpressionCard from './DreamstateImpressionCard.vue';", $mainContentHost);
+        $this->assertStringContainsString("mode: 'empty' | 'impression_card' | 'email_sender_card' | 'email_record_card' | 'dreamstate_listing_card' | 'dreamstate_impression_card';", $types);
+    }
+
+    public function test_dreamstate_impressions_render_as_meaning_first_cards(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $listing = File::get(resource_path('js/components/surface-tree/DreamstateListingCard.vue'));
+        $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // Selecting the dreamstate domain or one of its impressions routes to
+        // the meaning cards, not the generic technical card.
+        $this->assertStringContainsString("mode: 'dreamstate_listing_card'", $browser);
+        $this->assertStringContainsString("mode: 'dreamstate_impression_card'", $browser);
+        $this->assertStringContainsString('DreamstateImpressionCard', $listing);
+
+        // The headline and one-sentence summary are the front door; every
+        // card carries About, Contains, Connections, Evolution, and
+        // Technical Details slots with safe placeholders.
+        $this->assertStringContainsString('surface-tree__dreamstate-title', $card);
+        $this->assertStringContainsString('surface-tree__dreamstate-summary', $card);
+        $this->assertStringContainsString('aria-label="About this impression"', $card);
+        $this->assertStringContainsString('aria-label="Contains"', $card);
+        $this->assertStringContainsString('aria-label="Linked impressions"', $card);
+        $this->assertStringContainsString('aria-label="Evolution state"', $card);
+        $this->assertStringContainsString('aria-label="Technical details"', $card);
+        $this->assertStringContainsString('Open contents', $card);
+        $this->assertStringContainsString('Show connections', $card);
+
+        // Technical IDs stay behind the collapsed section by default.
+        $this->assertStringContainsString('v-if="showTechnical"', $card);
+        $this->assertStringContainsString("const showTechnical = ref(false);", $card);
+
+        // Unknown impressions still resolve to a generic display kind.
+        $this->assertStringContainsString("return { label: 'Unknown', slug: 'unknown' };", $display);
+    }
+
+    public function test_dreamstate_display_kind_comes_from_the_resolved_memory_kind_only(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The card feeds only the backend-resolved memory_kind into the
+        // display-kind map; the known feed kinds render as human labels.
+        $this->assertStringContainsString("displayKindFor(asString(valueFromPayload(['memory_kind'])))", $card);
+        $this->assertStringContainsString("email: 'Email',", $display);
+        $this->assertStringContainsString("code: 'Code',", $display);
+        $this->assertStringContainsString("evidence: 'Evidence',", $display);
+        $this->assertStringContainsString("context: 'Context',", $display);
+        $this->assertStringContainsString("readme: 'Readme',", $display);
+        $this->assertStringContainsString("living_document: 'Living document',", $display);
+        $this->assertStringContainsString("canon_document: 'Canon document',", $display);
+
+        // No Vue-side provenance guessing from ids, source refs, schema
+        // strings, or text shape.
+        $this->assertStringNotContainsString('sourceRef', $display);
+        $this->assertStringNotContainsString('sourcePath', $display);
+        $this->assertStringNotContainsString('schema', $display);
+        $this->assertStringNotContainsString('EXTENSIONS', $display);
+
+        // Provenance resolution status stays behind the collapsed technical
+        // section.
+        $this->assertStringContainsString("{ label: 'memory kind', value: asString(valueFromPayload(['memory_kind'])) }", $card);
+        $this->assertStringContainsString("{ label: 'contract version', value: asString(valueFromPayload(['contract_version'])) }", $card);
+        $this->assertStringContainsString('provenance_resolution_error', $card);
+    }
+
+    public function test_dreamstate_contains_section_renders_normalised_human_fields(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Contains section reads only the contains_*/email_* fields the
+        // backend presenter normalised, never raw payloads or identifiers.
+        $this->assertStringContainsString('containsFrom(meta.value)', $card);
+        $this->assertStringContainsString('contains.emailFrom', $card);
+        $this->assertStringContainsString('contains.emailSubject', $card);
+        $this->assertStringContainsString('formattedEmailDate', $card);
+        $this->assertStringContainsString('contains.emailExcerpt', $card);
+        $this->assertStringContainsString('contains.sourceLabel', $card);
+        $this->assertStringContainsString('contains.excerpt', $card);
+        $this->assertStringContainsString('contains.items', $card);
+        $this->assertStringContainsString('No contents summary available yet.', $card);
+
+        $this->assertStringContainsString("metaString(meta, 'contains_excerpt')", $display);
+        $this->assertStringContainsString("metaString(meta, 'contains_source_label')", $display);
+        $this->assertStringContainsString("metaString(meta, 'email_from')", $display);
+        $this->assertStringContainsString("meta.contains_available === true", $display);
+
+        // Full corpus stays behind the Open contents action.
+        $this->assertStringContainsString('v-if="showContents"', $card);
+        $this->assertStringContainsString('Open contents', $card);
+    }
+
+    public function test_dreamstate_evolution_renders_plain_state_labels_from_resolved_lineage(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Evolution section renders the backend-resolved step path with
+        // plain labels, and keeps safe fallbacks for unevolved or unresolved
+        // impressions.
+        $this->assertStringContainsString('aria-label="Evolution state"', $card);
+        $this->assertStringContainsString('evolutionViewFrom(meta.value)', $card);
+        $this->assertStringContainsString('evolutionView.steps', $card);
+        $this->assertStringContainsString('Not evolved yet. This impression was observed but has not become a Dreamstate candidate.', $card);
+        $this->assertStringContainsString('No Dreamstate evolution recorded yet.', $card);
+
+        // The evolution reader only consumes the resolved evolution meta; it
+        // never derives progression from statuses or ids client-side. (The
+        // connections lens may use resolved run ids as cluster keys, so the
+        // pin is scoped to the reader itself.)
+        $evolutionReader = substr($display, strpos($display, 'export function evolutionViewFrom'));
+        $evolutionReader = substr($evolutionReader, 0, strpos($evolutionReader, 'export type'));
+        $this->assertStringContainsString('meta.evolution_stage', $evolutionReader);
+        $this->assertStringContainsString('meta.evolution_label', $evolutionReader);
+        $this->assertStringContainsString('meta.evolution_steps', $evolutionReader);
+        $this->assertStringNotContainsString('run_id', $evolutionReader);
+        $this->assertStringNotContainsString('packet_id', $evolutionReader);
+
+        // Technical lineage ids stay behind the collapsed technical drawer.
+        $this->assertStringContainsString("{ label: 'candidate id', value: asString(valueFromPayload(['candidate_id'])) }", $card);
+        $this->assertStringContainsString("{ label: 'sensemaker request id', value: asString(valueFromPayload(['sensemaker_request_id'])) }", $card);
+    }
+
+    public function test_dreamstate_connections_render_grouped_plain_language_labels_without_ids(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Connections section renders the backend-resolved groups as
+        // labels with counts, with plain fallbacks for "nothing linked" and
+        // "could not check".
+        $this->assertStringContainsString('connectionsFrom(meta.value)', $card);
+        $this->assertStringContainsString('group.count', $card);
+        $this->assertStringContainsString('group.label', $card);
+        $this->assertStringContainsString('No linked impressions found yet.', $card);
+        $this->assertStringContainsString('Connections could not be checked for this impression.', $card);
+
+        // No raw ids or client-side relationship inference in the default
+        // connections surface.
+        $this->assertStringNotContainsString('linkedImpressionsFrom', $card);
+        $this->assertStringNotContainsString('encodeURIComponent(link.id)', $card);
+        $this->assertStringNotContainsString('linked_impressions', $display);
+
+        // The presenter only reads the normalised connection meta.
+        $this->assertStringContainsString('meta.connections_available !== true', $display);
+        $this->assertStringContainsString('meta.connections', $display);
+        $this->assertStringContainsString('meta.connection_count', $display);
+    }
+
+    public function test_dreamstate_technical_drawer_holds_ids_raw_payload_and_copy_actions(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $css = File::get(resource_path('css/surface-tree.css'));
+
+        // The drawer stays collapsed by default and carries the debugging
+        // receipt: ids, provenance, the source view actually read, and the
+        // raw node payload.
+        $this->assertStringContainsString('const showTechnical = ref(false);', $card);
+        $this->assertStringContainsString("{ label: 'source view', value: asString(valueFromPayload(['source_view'])) }", $card);
+        $this->assertStringContainsString('Raw payload', $card);
+        $this->assertStringContainsString('JSON.stringify(payload.value, null, 2)', $card);
+
+        // The raw JSON is contained in its own scrolling box so it cannot
+        // dominate the page.
+        $this->assertStringContainsString('surface-tree__dreamstate-raw', $card);
+        $this->assertStringContainsString('max-h-64 overflow-auto', $css);
+
+        // Copy actions exist only inside the drawer: one copy button in the
+        // whole card template, rendered per technical field.
+        $this->assertStringContainsString('copyTechnicalValue(field)', $card);
+        $this->assertStringContainsString('navigator.clipboard.writeText', $card);
+        $this->assertSame(1, substr_count($card, 'surface-tree__dreamstate-copy'));
+    }
+
+    public function test_dreamstate_listing_is_structured_by_about_evolution_and_connections_lenses(): void
+    {
+        $listing = File::get(resource_path('js/components/surface-tree/DreamstateListingCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The page offers the three human lenses, with About as the default.
+        $this->assertStringContainsString("{ lens: 'about', label: 'About' }", $listing);
+        $this->assertStringContainsString("{ lens: 'evolution', label: 'Evolution' }", $listing);
+        $this->assertStringContainsString("{ lens: 'connections', label: 'Connections' }", $listing);
+        $this->assertStringContainsString("ref<DreamstateLens>('about')", $listing);
+        $this->assertStringContainsString('aria-label="Dreamstate lenses"', $listing);
+
+        // Every lens renders grouped meaning islands of cards, never a flat
+        // technical table.
+        $this->assertStringContainsString('lensGroups', $listing);
+        $this->assertStringContainsString('surface-tree__dreamstate-lens-group-title', $listing);
+        $this->assertStringContainsString('DreamstateImpressionCard', $listing);
+
+        // Groupings are typed transformers over backend-resolved fields.
+        $this->assertStringContainsString('export function aboutLensGroups', $display);
+        $this->assertStringContainsString('export function evolutionLensGroups', $display);
+        $this->assertStringContainsString('export function connectionLensGroups', $display);
+        $this->assertStringContainsString("'Unknown / unclassified'", $display);
+        $this->assertStringContainsString("'Not clustered yet'", $display);
+
+        // Evolution prioritises the most evolved impressions first.
+        $this->assertStringContainsString("const EVOLUTION_STAGE_ORDER = ['settled', 'returned', 'matured', 'candidate', 'selected', 'observed'];", $display);
+
+        // Connection clusters carry human labels, not identifiers.
+        $this->assertStringContainsString("() => 'Dreamed together'", $display);
+        $this->assertStringContainsString('`From ${value}`', $display);
     }
 
     public function test_surface_tree_components_include_readability_class_hooks(): void
