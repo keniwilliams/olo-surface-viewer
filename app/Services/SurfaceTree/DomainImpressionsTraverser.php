@@ -131,6 +131,11 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
             ? $this->connections->resolveMany($rowsById, $evolutionById, $emailRowsById)
             : [];
 
+        // Which database view fed this listing — technical-drawer receipt.
+        $sourceView = $domain === 'dreamstate' && $rowsById !== []
+            ? $this->feed->sourceViewForDomain($domain)
+            : null;
+
         foreach ($rowsById as $impressionId => $row) {
             $rowProvenance = $provenanceById[$impressionId] ?? [];
             $memoryKind = $rowProvenance['memory_kind'] ?? null;
@@ -160,6 +165,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     'source_path' => $this->value($row, ['source_path']),
                     'schema' => $this->value($row, ['schema']),
                     'summary' => $domain === 'dreamstate' ? $this->corpusSummary($row) : null,
+                    'source_view' => $sourceView,
                     ...$containsMeta,
                     ...$rowProvenance,
                     ...($evolutionById[$impressionId] ?? []),

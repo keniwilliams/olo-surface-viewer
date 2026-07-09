@@ -207,6 +207,7 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertSame('impressions_dreamstate_feed_v1', $node->meta['contract_version']);
         $this->assertTrue($node->meta['provenance_resolved']);
         $this->assertArrayNotHasKey('provenance_resolution_error', $node->meta);
+        $this->assertSame('impressions:impressions_dreamstate_feed', $node->meta['source_view']);
     }
 
     public function test_dreamstate_provenance_is_unresolved_when_the_feed_contract_version_is_unexpected(): void
@@ -250,6 +251,9 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertFalse($node->meta['provenance_resolved']);
         $this->assertArrayNotHasKey('memory_kind', $node->meta);
         $this->assertSame('impressions_dreamstate_feed is not available', $node->meta['provenance_resolution_error']);
+
+        // The technical drawer still names the database view actually read.
+        $this->assertSame('impressions:sensemade_impressions', $node->meta['source_view']);
     }
 
     public function test_dreamstate_email_impressions_contain_email_shaped_contents_from_sidecar(): void

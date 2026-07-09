@@ -217,6 +217,31 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('meta.connection_count', $display);
     }
 
+    public function test_dreamstate_technical_drawer_holds_ids_raw_payload_and_copy_actions(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $css = File::get(resource_path('css/surface-tree.css'));
+
+        // The drawer stays collapsed by default and carries the debugging
+        // receipt: ids, provenance, the source view actually read, and the
+        // raw node payload.
+        $this->assertStringContainsString('const showTechnical = ref(false);', $card);
+        $this->assertStringContainsString("{ label: 'source view', value: asString(valueFromPayload(['source_view'])) }", $card);
+        $this->assertStringContainsString('Raw payload', $card);
+        $this->assertStringContainsString('JSON.stringify(payload.value, null, 2)', $card);
+
+        // The raw JSON is contained in its own scrolling box so it cannot
+        // dominate the page.
+        $this->assertStringContainsString('surface-tree__dreamstate-raw', $card);
+        $this->assertStringContainsString('max-h-64 overflow-auto', $css);
+
+        // Copy actions exist only inside the drawer: one copy button in the
+        // whole card template, rendered per technical field.
+        $this->assertStringContainsString('copyTechnicalValue(field)', $card);
+        $this->assertStringContainsString('navigator.clipboard.writeText', $card);
+        $this->assertSame(1, substr_count($card, 'surface-tree__dreamstate-copy'));
+    }
+
     public function test_surface_tree_components_include_readability_class_hooks(): void
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));

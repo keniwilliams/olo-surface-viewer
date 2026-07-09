@@ -40,13 +40,7 @@ class DomainImpressionsFeed
      */
     public function latestRowsForDomain(string $domain): array
     {
-        $sources = match ($domain) {
-            'dreamstate' => self::DREAMSTATE_SOURCES,
-            'camera_lens' => self::CAMERA_LENS_SOURCES,
-            default => [],
-        };
-
-        $modelClass = $this->firstAvailableSource($sources);
+        $modelClass = $this->firstAvailableSource($this->sourcesForDomain($domain));
 
         if ($modelClass === null) {
             return [];
@@ -67,5 +61,34 @@ class DomainImpressionsFeed
         } catch (Throwable) {
             return [];
         }
+    }
+
+    /**
+     * The connection:table/view the domain listing currently reads from —
+     * the "source database/view" receipt for the technical drawer.
+     */
+    public function sourceViewForDomain(string $domain): ?string
+    {
+        $modelClass = $this->firstAvailableSource($this->sourcesForDomain($domain));
+
+        if ($modelClass === null) {
+            return null;
+        }
+
+        $model = new $modelClass;
+
+        return $model->getConnectionName().':'.$model->getTable();
+    }
+
+    /**
+     * @return list<class-string<Model>>
+     */
+    private function sourcesForDomain(string $domain): array
+    {
+        return match ($domain) {
+            'dreamstate' => self::DREAMSTATE_SOURCES,
+            'camera_lens' => self::CAMERA_LENS_SOURCES,
+            default => [],
+        };
     }
 }
