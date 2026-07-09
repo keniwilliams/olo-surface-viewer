@@ -191,6 +191,32 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString("{ label: 'sensemaker request id', value: asString(valueFromPayload(['sensemaker_request_id'])) }", $card);
     }
 
+    public function test_dreamstate_connections_render_grouped_plain_language_labels_without_ids(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Connections section renders the backend-resolved groups as
+        // labels with counts, with plain fallbacks for "nothing linked" and
+        // "could not check".
+        $this->assertStringContainsString('connectionsFrom(meta.value)', $card);
+        $this->assertStringContainsString('group.count', $card);
+        $this->assertStringContainsString('group.label', $card);
+        $this->assertStringContainsString('No linked impressions found yet.', $card);
+        $this->assertStringContainsString('Connections could not be checked for this impression.', $card);
+
+        // No raw ids or client-side relationship inference in the default
+        // connections surface.
+        $this->assertStringNotContainsString('linkedImpressionsFrom', $card);
+        $this->assertStringNotContainsString('encodeURIComponent(link.id)', $card);
+        $this->assertStringNotContainsString('linked_impressions', $display);
+
+        // The presenter only reads the normalised connection meta.
+        $this->assertStringContainsString('meta.connections_available !== true', $display);
+        $this->assertStringContainsString('meta.connections', $display);
+        $this->assertStringContainsString('meta.connection_count', $display);
+    }
+
     public function test_surface_tree_components_include_readability_class_hooks(): void
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));

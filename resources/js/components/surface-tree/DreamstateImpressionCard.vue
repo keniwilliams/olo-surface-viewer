@@ -92,13 +92,17 @@
 
         <section v-if="showConnections" class="surface-tree__dreamstate-section" aria-label="Linked impressions">
             <h3 class="surface-tree__dreamstate-section-title">Connections</h3>
-            <ul v-if="linkedImpressions.length > 0" class="surface-tree__dreamstate-links">
-                <li v-for="link in linkedImpressions" :key="link.id ?? link.label">
-                    <a v-if="link.id" :href="`/impressions/${encodeURIComponent(link.id)}`">{{ link.label }}</a>
-                    <template v-else>{{ link.label }}</template>
+
+            <ul v-if="connectionsView && connectionsView.groups.length > 0" class="surface-tree__dreamstate-connections">
+                <li v-for="group in connectionsView.groups" :key="group.kind" class="surface-tree__dreamstate-connection">
+                    <span class="surface-tree__dreamstate-connection-count">{{ group.count }}</span>
+                    <span class="surface-tree__dreamstate-connection-label">{{ group.label }}</span>
                 </li>
             </ul>
-            <p v-else class="surface-tree__corpus-muted">No linked impressions recorded for this impression yet.</p>
+
+            <p v-else-if="connectionsView" class="surface-tree__corpus-muted">No linked impressions found yet.</p>
+
+            <p v-else class="surface-tree__corpus-muted">Connections could not be checked for this impression.</p>
         </section>
 
         <section v-if="showTechnical" class="surface-tree__dreamstate-section" aria-label="Technical details">
@@ -118,7 +122,7 @@
 import { computed, ref, watch } from 'vue';
 import { marked } from 'marked';
 import { formatDateTime } from '../../support/dateFormatter';
-import { containsFrom, displayKindFor, evolutionViewFrom, linkedImpressionsFrom } from './dreamstateDisplay';
+import { connectionsFrom, containsFrom, displayKindFor, evolutionViewFrom } from './dreamstateDisplay';
 import type { SurfaceMainContentState } from './types';
 
 const props = defineProps<{
@@ -174,7 +178,9 @@ const provenanceStatus = computed(() => {
 
     return null;
 });
-const linkedImpressions = computed(() => linkedImpressionsFrom(meta.value));
+// Grouped plain-language relationship summaries resolved server-side; the
+// default Connections surface shows labels and counts, never ids.
+const connectionsView = computed(() => connectionsFrom(meta.value));
 
 const showContents = ref(false);
 const showConnections = ref(false);

@@ -27,7 +27,7 @@ class DreamstateContainsPresenter
 
     private const MAX_ITEMS = 6;
 
-    private const EMAIL_COLUMNS = ['message_id', 'sender', 'from_email', 'from_name', 'subject', 'body_preview', 'normalised_body', 'received_at'];
+    private const EMAIL_COLUMNS = ['message_id', 'thread_id', 'sender', 'from_email', 'from_name', 'subject', 'body_preview', 'normalised_body', 'received_at'];
 
     private const DOCUMENT_KINDS = ['living_document', 'canon_document', 'manifest', 'evidence', 'context', 'readme'];
 

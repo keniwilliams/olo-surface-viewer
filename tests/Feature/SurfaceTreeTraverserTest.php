@@ -442,6 +442,99 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertArrayNotHasKey('evolution_steps', $node->meta);
     }
 
+    public function test_dreamstate_email_impressions_group_connections_by_conversation_and_sender(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-email', null, memoryKind: 'email', sourceRef: 'message-1'),
+        ]);
+
+        // Beyond the seeded message-1 (thread-1): one more email in the same
+        // thread and one from the same sender in another thread.
+        DB::connection('sidecar')->table('emails')->insert([
+            $this->sidecarEmailRow('message-2', 'thread-1', 'sender@example.com'),
+            $this->sidecarEmailRow('message-3', 'thread-2', 'sender@example.com'),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertTrue($node->meta['connections_available']);
+        $this->assertSame(3, $node->meta['connection_count']);
+        $this->assertSame([
+            ['kind' => 'same_conversation', 'label' => 'Part of the same conversation', 'count' => 1],
+            ['kind' => 'same_sender', 'label' => 'More from this sender', 'count' => 2],
+        ], $node->meta['connections']);
+    }
+
+    public function test_dreamstate_impressions_dreamed_in_the_same_run_are_connected(): void
+    {
+        $this->createDreamstateFeedTable();
+        $this->createDreamstateLineageTables();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-a', null),
+            $this->dreamstateRow('dream-b', null, observedAt: '2026-07-04 12:00:00'),
+        ]);
+
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_candidates')->insert([
+            ['candidate_id' => 'cand-a', 'run_id' => 'run-9', 'impression_id' => 'dream-a', 'status' => 'pending'],
+            ['candidate_id' => 'cand-b', 'run_id' => 'run-9', 'impression_id' => 'dream-b', 'status' => 'pending'],
+        ]);
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_sensemaker_request')->insert([
+            ['request_id' => 'req-a', 'run_id' => 'run-9', 'impression_id' => 'dream-a', 'status' => 'complete', 'completed_at' => '2026-07-05 13:00:00'],
+            ['request_id' => 'req-b', 'run_id' => 'run-9', 'impression_id' => 'dream-b', 'status' => 'complete', 'completed_at' => '2026-07-05 13:00:00'],
+        ]);
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_return_packet')->insert([
+            ['packet_id' => 'packet-9', 'run_id' => 'run-9', 'status' => 'ready'],
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame([
+            ['kind' => 'dreamed_together', 'label' => 'Dreamed together', 'count' => 1],
+            ['kind' => 'same_output', 'label' => 'Contributed to the same output', 'count' => 1],
+        ], $node->meta['connections']);
+        $this->assertSame(2, $node->meta['connection_count']);
+    }
+
+    public function test_dreamstate_impressions_from_the_same_source_path_are_connected(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-one', 'docs/notes.md'),
+            $this->dreamstateRow('dream-two', 'docs/notes.md', observedAt: '2026-07-04 12:00:00'),
+            $this->dreamstateRow('dream-other', 'docs/other.md', observedAt: '2026-07-03 12:00:00'),
+        ]);
+
+        $nodes = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3);
+
+        $this->assertSame([
+            ['kind' => 'same_source', 'label' => 'From the same source', 'count' => 1],
+        ], $nodes[0]->meta['connections']);
+        $this->assertSame(0, $nodes[2]->meta['connection_count']);
+        $this->assertArrayNotHasKey('connections', $nodes[2]->meta);
+    }
+
+    public function test_dreamstate_connections_report_none_found_without_breaking_when_sources_are_missing(): void
+    {
+        // No subconscious lineage tables and no sidecar match: the resolver
+        // still reports an answer (checked, nothing linked) and the listing
+        // renders.
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-alone', null),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertTrue($node->meta['connections_available']);
+        $this->assertSame(0, $node->meta['connection_count']);
+        $this->assertArrayNotHasKey('connections', $node->meta);
+    }
+
     public function test_domain_traverser_splits_camera_lens_into_scenes_and_telemetry_folders(): void
     {
         $folders = app(DomainImpressionsTraverser::class)->children('domain:camera_lens', 0, 3);
@@ -922,6 +1015,27 @@ class SurfaceTreeTraverserTest extends TestCase
             'contract_version' => $contractVersion,
             'raw_corpus' => $rawCorpus,
             'observed_at' => $observedAt,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sidecarEmailRow(string $messageId, string $threadId, string $sender): array
+    {
+        return [
+            'message_id' => $messageId,
+            'thread_id' => $threadId,
+            'sender' => $sender,
+            'subject' => 'Subject for '.$messageId,
+            'status' => 'synced',
+            'body_preview' => 'Preview.',
+            'normalised_body' => 'Body.',
+            'human_summary' => null,
+            'sensemade_text' => null,
+            'why_it_matters' => null,
+            'recommended_next_step' => null,
+            'received_at' => '2026-07-05 11:00:00',
         ];
     }
 

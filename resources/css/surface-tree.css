@@ -258,12 +258,20 @@
         }
     }
 
-    & .surface-tree__dreamstate-links {
-        @apply m-0 grid list-none gap-1 pl-0;
+    & .surface-tree__dreamstate-connections {
+        @apply m-0 grid list-none gap-1.5 pl-0;
+    }
 
-        & a {
-            @apply text-amber-400 underline underline-offset-4;
-        }
+    & .surface-tree__dreamstate-connection {
+        @apply flex items-baseline gap-2;
+    }
+
+    & .surface-tree__dreamstate-connection-count {
+        @apply min-w-6 rounded-full bg-gray-800 px-2 py-0.5 text-center text-xs font-medium text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-connection-label {
+        @apply leading-6;
     }
 
     & .surface-tree__email-sections {

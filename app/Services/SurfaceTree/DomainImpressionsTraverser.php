@@ -29,6 +29,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
         private readonly DreamstateProvenanceResolver $provenance,
         private readonly DreamstateEvolutionResolver $evolution,
         private readonly DreamstateContainsPresenter $contains,
+        private readonly DreamstateConnectionsPresenter $connections,
     ) {}
 
     /**
@@ -118,6 +119,18 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
             ? $this->contains->emailRowsByReference($this->emailReferences($rowsById, $provenanceById))
             : [];
 
+        $emailRowsById = [];
+
+        foreach ($rowsById as $impressionId => $row) {
+            $emailRowsById[$impressionId] = $this->emailRowFor($row, $emailsByReference);
+        }
+
+        // Grouped plain-language connection summaries, from the listing rows
+        // plus batched sidecar/subconscious counts.
+        $connectionsById = $domain === 'dreamstate'
+            ? $this->connections->resolveMany($rowsById, $evolutionById, $emailRowsById)
+            : [];
+
         foreach ($rowsById as $impressionId => $row) {
             $rowProvenance = $provenanceById[$impressionId] ?? [];
             $memoryKind = $rowProvenance['memory_kind'] ?? null;
@@ -126,7 +139,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                 ? $this->contains->containsMetaFor(
                     $row,
                     is_string($memoryKind) ? $memoryKind : null,
-                    $this->emailRowFor($row, $emailsByReference),
+                    $emailRowsById[$impressionId] ?? null,
                 )
                 : [];
             $impression = $this->impressionNode(
@@ -150,6 +163,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     ...$containsMeta,
                     ...$rowProvenance,
                     ...($evolutionById[$impressionId] ?? []),
+                    ...($connectionsById[$impressionId] ?? []),
                 ],
             );
 
