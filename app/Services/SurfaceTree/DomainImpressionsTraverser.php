@@ -27,6 +27,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
         private readonly DomainImpressionsFeed $feed,
         private readonly CameraLensTelemetryFeed $telemetryFeed,
         private readonly DreamstateProvenanceResolver $provenance,
+        private readonly DreamstateEvolutionResolver $evolution,
     ) {}
 
     /**
@@ -106,6 +107,12 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
             ? $this->provenance->resolveMany(array_keys($rowsById))
             : [];
 
+        // How far each impression moved through Dreamstate, from the
+        // subconscious lineage tables, also in one batch per source.
+        $evolutionById = $domain === 'dreamstate'
+            ? $this->evolution->resolveMany(array_map(strval(...), array_keys($rowsById)))
+            : [];
+
         foreach ($rowsById as $impressionId => $row) {
             $impression = $this->impressionNode(
                 impressionId: (string) $impressionId,
@@ -126,6 +133,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     'schema' => $this->value($row, ['schema']),
                     'summary' => $domain === 'dreamstate' ? $this->corpusSummary($row) : null,
                     ...($provenanceById[$impressionId] ?? []),
+                    ...($evolutionById[$impressionId] ?? []),
                 ],
             );
 

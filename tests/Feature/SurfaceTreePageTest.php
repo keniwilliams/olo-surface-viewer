@@ -137,6 +137,33 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('provenance_resolution_error', $card);
     }
 
+    public function test_dreamstate_evolution_renders_plain_state_labels_from_resolved_lineage(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Evolution section renders the backend-resolved step path with
+        // plain labels, and keeps safe fallbacks for unevolved or unresolved
+        // impressions.
+        $this->assertStringContainsString('aria-label="Evolution state"', $card);
+        $this->assertStringContainsString('evolutionViewFrom(meta.value)', $card);
+        $this->assertStringContainsString('evolutionView.steps', $card);
+        $this->assertStringContainsString('Not evolved yet. This impression was observed but has not become a Dreamstate candidate.', $card);
+        $this->assertStringContainsString('No Dreamstate evolution recorded yet.', $card);
+
+        // The presenter only reads the resolved evolution meta; it never
+        // derives progression from statuses or ids client-side.
+        $this->assertStringContainsString('meta.evolution_stage', $display);
+        $this->assertStringContainsString('meta.evolution_label', $display);
+        $this->assertStringContainsString('meta.evolution_steps', $display);
+        $this->assertStringNotContainsString('run_id', $display);
+        $this->assertStringNotContainsString('packet_id', $display);
+
+        // Technical lineage ids stay behind the collapsed technical drawer.
+        $this->assertStringContainsString("{ label: 'candidate id', value: asString(valueFromPayload(['candidate_id'])) }", $card);
+        $this->assertStringContainsString("{ label: 'sensemaker request id', value: asString(valueFromPayload(['sensemaker_request_id'])) }", $card);
+    }
+
     public function test_surface_tree_components_include_readability_class_hooks(): void
     {
         $browser = File::get(resource_path('js/components/surface-tree/SurfaceTreeBrowser.vue'));

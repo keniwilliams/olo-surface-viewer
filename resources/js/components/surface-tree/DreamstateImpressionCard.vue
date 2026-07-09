@@ -16,10 +16,27 @@
             {{ summary ?? 'No summary has been captured for this impression yet.' }}
         </p>
 
-        <p :class="['surface-tree__dreamstate-evolution', evolution ? `surface-tree__dreamstate-evolution--${evolution.state}` : '']" aria-label="Evolution state">
-            <span class="surface-tree__dreamstate-section-label">Evolution</span>
-            {{ evolution?.label ?? 'No Dreamstate evolution recorded yet.' }}
-        </p>
+        <section class="surface-tree__dreamstate-evolution" aria-label="Evolution state">
+            <h3 class="surface-tree__dreamstate-section-title">Evolution</h3>
+
+            <p v-if="evolutionView && evolutionView.steps.length > 0" class="surface-tree__dreamstate-evolution-path">
+                <template v-for="(step, index) in evolutionView.steps" :key="step">
+                    <span v-if="index > 0" class="surface-tree__dreamstate-evolution-arrow" aria-hidden="true">→</span>
+                    <span
+                        :class="[
+                            'surface-tree__dreamstate-evolution-step',
+                            index === evolutionView.steps.length - 1 ? 'surface-tree__dreamstate-evolution-step--current' : '',
+                        ]"
+                    >{{ step }}</span>
+                </template>
+            </p>
+
+            <p v-else-if="evolutionView" class="surface-tree__corpus-muted">
+                Not evolved yet. This impression was observed but has not become a Dreamstate candidate.
+            </p>
+
+            <p v-else class="surface-tree__corpus-muted">No Dreamstate evolution recorded yet.</p>
+        </section>
 
         <div class="surface-tree__dreamstate-actions" role="group" aria-label="Impression actions">
             <button type="button" class="surface-tree__dreamstate-action" :aria-expanded="showContents" @click="toggleContents">
@@ -70,7 +87,7 @@
 import { computed, ref, watch } from 'vue';
 import { marked } from 'marked';
 import { formatDateTime } from '../../support/dateFormatter';
-import { displayKindFor, evolutionFor, linkedImpressionsFrom } from './dreamstateDisplay';
+import { displayKindFor, evolutionViewFrom, linkedImpressionsFrom } from './dreamstateDisplay';
 import type { SurfaceMainContentState } from './types';
 
 const props = defineProps<{
@@ -96,7 +113,9 @@ const formattedObservedAt = computed(() => observedAt.value ? formatDateTime(obs
 // via impressions_dreamstate_feed; unresolved impressions stay Unknown.
 const displayKind = computed(() => displayKindFor(asString(valueFromPayload(['memory_kind']))));
 
-const evolution = computed(() => evolutionFor(asString(valueFromPayload(['status', 'process_status', 'processStatus']))));
+// The evolution path was resolved server-side from the subconscious
+// lineage tables; the card only renders the plain-label steps.
+const evolutionView = computed(() => evolutionViewFrom(meta.value));
 
 // Reports whether the backend managed to resolve this impression's
 // provenance against the Impressions feed, for the technical section only.
@@ -147,8 +166,13 @@ const technicalFields = computed(() => [
     { label: 'schema', value: asString(valueFromPayload(['schema'])) },
     { label: 'source ref', value: asString(valueFromPayload(['source_ref'])) },
     { label: 'source path', value: asString(valueFromPayload(['source_path'])) },
+    { label: 'evolution stage', value: asString(valueFromPayload(['evolution_stage'])) },
     { label: 'run id', value: asString(valueFromPayload(['run_id', 'runId'])) },
+    { label: 'candidate id', value: asString(valueFromPayload(['candidate_id'])) },
+    { label: 'candidate status', value: asString(valueFromPayload(['candidate_status'])) },
     { label: 'packet id', value: asString(valueFromPayload(['packet_id', 'packetId'])) },
+    { label: 'sensemaker request id', value: asString(valueFromPayload(['sensemaker_request_id'])) },
+    { label: 'sensemaker status', value: asString(valueFromPayload(['sensemaker_status'])) },
     { label: 'observed at', value: observedAt.value },
 ].filter((field) => field.value));
 

@@ -199,15 +199,23 @@
     }
 
     & .surface-tree__dreamstate-evolution {
-        @apply m-0 text-xs opacity-80;
+        @apply grid gap-1.5;
     }
 
-    & .surface-tree__dreamstate-evolution--evolved {
-        @apply text-emerald-300 opacity-100;
+    & .surface-tree__dreamstate-evolution-path {
+        @apply m-0 flex flex-wrap items-center gap-1.5;
     }
 
-    & .surface-tree__dreamstate-evolution--failed {
-        @apply text-rose-300 opacity-100;
+    & .surface-tree__dreamstate-evolution-step {
+        @apply rounded-full bg-gray-800 px-2.5 py-0.5 text-xs text-gray-200;
+    }
+
+    & .surface-tree__dreamstate-evolution-step--current {
+        @apply bg-emerald-950 font-medium text-emerald-300;
+    }
+
+    & .surface-tree__dreamstate-evolution-arrow {
+        @apply text-xs opacity-65;
     }
 
     & .surface-tree__dreamstate-section-label {

@@ -5,9 +5,11 @@ export type DreamstateDisplayKind = {
     slug: string;
 };
 
-export type DreamstateEvolution = {
-    state: 'evolved' | 'awaiting' | 'failed';
+export type DreamstateEvolutionView = {
+    stage: string;
     label: string;
+    steps: string[];
+    evolved: boolean;
 };
 
 // Human labels for the memory_kind values the Impressions feed publishes.
@@ -38,28 +40,29 @@ export function displayKindFor(memoryKind: string | null | undefined): Dreamstat
     return { label, slug: kind };
 }
 
-// Reads the pipeline status as a human evolution statement. Unrecognised
-// or absent statuses return null so the card can show its placeholder.
-export function evolutionFor(status: string | null | undefined): DreamstateEvolution | null {
-    const value = (status ?? '').toLowerCase();
+// Reads the evolution lineage the backend resolved from the subconscious
+// dreamstate tables. This is a typed reader only: the stage and plain-label
+// steps were decided server-side, and nothing here derives progression from
+// statuses or ids. Returns null when no lineage source was reachable so the
+// card can show its placeholder.
+export function evolutionViewFrom(meta: Record<string, unknown>): DreamstateEvolutionView | null {
+    const stage = typeof meta.evolution_stage === 'string' && meta.evolution_stage !== ''
+        ? meta.evolution_stage
+        : null;
 
-    if (value === '') {
+    if (!stage) {
         return null;
     }
 
-    if (/fail|error|reject/.test(value)) {
-        return { state: 'failed', label: 'Dreamstate attempted to evolve this impression but failed' };
-    }
+    const label = typeof meta.evolution_label === 'string' && meta.evolution_label !== ''
+        ? meta.evolution_label
+        : 'Not evolved yet';
 
-    if (/sensemade|evolved|dreamed|transformed|connected|complete/.test(value)) {
-        return { state: 'evolved', label: 'Evolved through Dreamstate' };
-    }
+    const steps = Array.isArray(meta.evolution_steps)
+        ? meta.evolution_steps.filter((step): step is string => typeof step === 'string' && step !== '')
+        : [];
 
-    if (/observed|pending|queued|new|raw|waiting/.test(value)) {
-        return { state: 'awaiting', label: 'Observed, not yet evolved' };
-    }
-
-    return null;
+    return { stage, label, steps, evolved: stage !== 'observed' };
 }
 
 // Linked impressions may arrive as an array of ids or of objects; anything
