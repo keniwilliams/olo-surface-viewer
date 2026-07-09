@@ -48,19 +48,13 @@ class SurfaceTreeNodeApiTest extends TestCase
 
     public function test_children_endpoint_returns_dreamstate_impressions(): void
     {
-        Schema::connection('impressions')->create('impressions_dreamstate_feed', function ($table): void {
-            $table->string('impression_id');
-            $table->string('label')->nullable();
-            $table->string('kind')->nullable();
-            $table->string('status')->nullable();
-            $table->timestampTz('observed_at')->nullable();
-        });
+        $this->createDreamstateFeedTable();
 
         DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
             'impression_id' => 'dream-uuid',
-            'label' => 'Dreamstate impression',
             'kind' => 'dream',
-            'status' => 'observed',
+            'process_status' => 'observed',
+            'contract_version' => 'impressions_dreamstate_feed_v1',
             'observed_at' => '2026-07-05 12:05:00',
         ]);
 
@@ -169,6 +163,8 @@ class SurfaceTreeNodeApiTest extends TestCase
 
     public function test_children_endpoint_returns_normalised_child_nodes(): void
     {
+        $this->seedFilesystemFeedImpression();
+
         $this->getJson('/surface-tree/nodes/domain:filesystem/children?depth_window=3')
             ->assertOk()
             ->assertJsonPath('meta.depth_window', 3)
@@ -188,6 +184,8 @@ class SurfaceTreeNodeApiTest extends TestCase
 
     public function test_children_endpoint_returns_impression_nodes_for_known_folder_node(): void
     {
+        $this->seedFilesystemFeedImpression();
+
         $domainChildren = $this->getJson('/surface-tree/nodes/domain:filesystem/children?depth_window=3')->json('data');
         $driveChildren = $this->getJson($this->childrenUrl($domainChildren[0]['key'], 3))->json('data');
         $softwareChildren = $this->getJson($this->childrenUrl($driveChildren[0]['key'], 3))->json('data');
@@ -283,6 +281,8 @@ class SurfaceTreeNodeApiTest extends TestCase
 
     public function test_depth_window_marks_returned_nodes_at_the_terminal_depth(): void
     {
+        $this->seedFilesystemFeedImpression();
+
         $this->getJson('/surface-tree/nodes/domain:filesystem/children?depth_window=1')
             ->assertOk()
             ->assertJsonPath('data.0.label', 'D:')
@@ -336,19 +336,17 @@ class SurfaceTreeNodeApiTest extends TestCase
 
     private function createSidecarEmailsTable(): void
     {
+        // Mirrors the real sidecar emails schema: a native string id (the
+        // message reference), no status column, and no sensemade columns —
+        // sensemade state lives on email_impressions.
         Schema::connection('sidecar')->create('emails', function ($table): void {
-            $table->id();
-            $table->string('message_id');
+            $table->string('id')->primary();
             $table->string('thread_id')->nullable();
+            $table->string('conversation_id')->nullable();
             $table->string('sender')->nullable();
             $table->string('subject')->nullable();
-            $table->string('status')->nullable();
             $table->text('body_preview')->nullable();
             $table->text('normalised_body')->nullable();
-            $table->text('human_summary')->nullable();
-            $table->text('sensemade_text')->nullable();
-            $table->text('why_it_matters')->nullable();
-            $table->text('recommended_next_step')->nullable();
             $table->timestampTz('received_at')->nullable();
         });
     }
@@ -393,17 +391,12 @@ class SurfaceTreeNodeApiTest extends TestCase
         ]);
 
         DB::connection('sidecar')->table('emails')->insert([
-            'message_id' => 'message-1',
+            'id' => 'message-1',
             'thread_id' => 'thread-1',
             'sender' => 'sender@example.com',
             'subject' => 'Sidecar subject',
-            'status' => 'synced',
             'body_preview' => 'Short preview.',
             'normalised_body' => 'Full normalised email body.',
-            'human_summary' => 'Human-readable summary.',
-            'sensemade_text' => 'Sensemade interpretation.',
-            'why_it_matters' => 'This affects the current work.',
-            'recommended_next_step' => 'Reply with the requested detail.',
             'received_at' => '2026-07-05 11:58:00',
         ]);
 
@@ -418,10 +411,42 @@ class SurfaceTreeNodeApiTest extends TestCase
                 'sensemade_result' => [
                     'human_summary' => 'Impressions human summary.',
                     'sensemade_text' => 'Impressions sensemade text.',
+                    'why_it_matters' => 'This affects the current work.',
+                    'recommended_next_step' => 'Reply with the requested detail.',
                 ],
             ], JSON_THROW_ON_ERROR),
             'created_at' => '2026-07-05 12:00:00',
             'updated_at' => '2026-07-05 12:01:00',
+        ]);
+    }
+
+    private function createDreamstateFeedTable(): void
+    {
+        Schema::connection('impressions')->create('impressions_dreamstate_feed', function ($table): void {
+            $table->string('impression_id');
+            $table->string('kind')->nullable();
+            $table->string('process_status')->nullable();
+            $table->string('memory_kind')->nullable();
+            $table->string('memory_source_ref')->nullable();
+            $table->string('source_path')->nullable();
+            $table->string('contract_version')->nullable();
+            $table->text('raw_corpus')->nullable();
+            $table->string('raw_corpus_encoding')->nullable();
+            $table->timestampTz('observed_at')->nullable();
+        });
+    }
+
+    private function seedFilesystemFeedImpression(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            'impression_id' => 'fs-uuid',
+            'kind' => 'file',
+            'process_status' => 'observed',
+            'contract_version' => 'impressions_dreamstate_feed_v1',
+            'source_path' => 'D:\OLO-Software\olo-impressions\first.md',
+            'observed_at' => '2026-07-05 12:00:00',
         ]);
     }
 

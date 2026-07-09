@@ -3,28 +3,21 @@
 namespace App\Services\SurfaceTree;
 
 use App\Models\Impressions\ImpressionDreamstateFeed;
-use App\Services\SurfaceTree\Concerns\ReadsEloquentSources;
 use Throwable;
 
 /**
  * Resolves the type/provenance of dreamed impressions. Dreamstate remembers
- * what it dreamed about, Impressions remembers what the thing was: detailed
- * type identity is thinned out after Acquire, so each dreamstate
- * impression_id is joined back to the canonical
- * olo_impressions.impressions_dreamstate_feed view and its memory_kind
- * becomes the display kind. Anything the feed cannot vouch for is reported
- * unresolved rather than guessed at.
+ * what it dreamed about, Impressions remembers what the thing was: each
+ * dreamstate impression_id is joined back to the canonical
+ * impressions_dreamstate_feed contract and its memory_kind becomes the
+ * display kind. Anything the feed cannot vouch for — a missing row, a
+ * drifted contract_version, or an unreadable feed — is reported unresolved
+ * rather than guessed at.
  */
 class DreamstateProvenanceResolver
 {
-    use ReadsEloquentSources;
-
-    public const CONTRACT_VERSION = 'impressions_dreamstate_feed_v1';
-
-    private const FEED_COLUMNS = ['impression_id', 'memory_kind', 'source_ref', 'contract_version'];
-
     /**
-     * @param  list<string>  $impressionIds
+     * @param  list<int|string>  $impressionIds
      * @return array<string, array<string, mixed>> provenance meta keyed by impression id
      */
     public function resolveMany(array $impressionIds): array
@@ -34,23 +27,16 @@ class DreamstateProvenanceResolver
         }
 
         try {
-            if (! $this->sourceExists(new ImpressionDreamstateFeed)) {
-                return $this->allUnresolved($impressionIds, 'impressions_dreamstate_feed is not available');
-            }
-
-            $missingColumns = array_values(array_diff(self::FEED_COLUMNS, $this->columns(ImpressionDreamstateFeed::class)));
-
-            if ($missingColumns !== []) {
-                return $this->allUnresolved($impressionIds, 'feed is missing columns: '.implode(', ', $missingColumns));
-            }
-
             $rows = ImpressionDreamstateFeed::query()
-                ->select(self::FEED_COLUMNS)
+                ->select(['impression_id', 'memory_kind', 'memory_source_ref', 'contract_version'])
                 ->whereIn('impression_id', $impressionIds)
                 ->get()
                 ->keyBy('impression_id');
         } catch (Throwable) {
-            return $this->allUnresolved($impressionIds, 'feed could not be queried');
+            return array_fill_keys(
+                array_map(strval(...), $impressionIds),
+                $this->unresolved('impressions_dreamstate_feed could not be queried'),
+            );
         }
 
         $provenance = [];
@@ -64,34 +50,23 @@ class DreamstateProvenanceResolver
                 continue;
             }
 
-            $contractVersion = $row->getAttribute('contract_version');
-
-            if ($contractVersion !== self::CONTRACT_VERSION) {
+            if ($row->contract_version !== ImpressionDreamstateFeed::CONTRACT_VERSION) {
                 $provenance[$impressionId] = $this->unresolved(
-                    'unexpected contract_version: '.($contractVersion === null ? 'null' : (string) $contractVersion),
+                    'unexpected contract_version: '.($row->contract_version ?? 'null'),
                 );
 
                 continue;
             }
 
             $provenance[$impressionId] = [
-                'memory_kind' => $row->getAttribute('memory_kind'),
-                'memory_source_ref' => $row->getAttribute('source_ref'),
-                'contract_version' => $contractVersion,
+                'memory_kind' => $row->memory_kind,
+                'memory_source_ref' => $row->memory_source_ref,
+                'contract_version' => $row->contract_version,
                 'provenance_resolved' => true,
             ];
         }
 
         return $provenance;
-    }
-
-    /**
-     * @param  list<string>  $impressionIds
-     * @return array<string, array<string, mixed>>
-     */
-    private function allUnresolved(array $impressionIds, string $error): array
-    {
-        return array_fill_keys($impressionIds, $this->unresolved($error));
     }
 
     /**

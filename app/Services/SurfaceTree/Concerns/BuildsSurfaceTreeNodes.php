@@ -3,7 +3,6 @@
 namespace App\Services\SurfaceTree\Concerns;
 
 use App\Services\SurfaceTree\SurfaceTreeNode;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 trait BuildsSurfaceTreeNodes
@@ -99,30 +98,22 @@ trait BuildsSurfaceTreeNodes
         return is_string($decoded) ? $decoded : null;
     }
 
-    private function value(mixed $row, array $candidates): ?string
+    /**
+     * Normalises a scalar attribute to a non-empty string or null. This is
+     * not a row reader: callers access typed model properties (or telemetry
+     * array keys) explicitly and only normalise the value here.
+     */
+    private function text(mixed $value): ?string
     {
-        foreach ($candidates as $candidate) {
-            $value = $this->rowValue($row, $candidate);
+        if (is_string($value) && trim($value) !== '') {
+            return $value;
+        }
 
-            if ($value !== null && $value !== '' && ! is_resource($value)) {
-                return (string) $value;
-            }
+        if (is_numeric($value)) {
+            return (string) $value;
         }
 
         return null;
-    }
-
-    private function rowValue(mixed $row, string $key): mixed
-    {
-        if ($row instanceof Model) {
-            return $row->getAttribute($key);
-        }
-
-        if (is_array($row)) {
-            return $row[$key] ?? null;
-        }
-
-        return is_object($row) && property_exists($row, $key) ? $row->{$key} : null;
     }
 
     private function titleFromIdentifier(?string $identifier, string $fallback): string
