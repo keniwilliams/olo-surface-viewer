@@ -148,6 +148,135 @@ export function connectionsFrom(meta: Record<string, unknown>): DreamstateConnec
     return { count, groups };
 }
 
+export type DreamstateLens = 'about' | 'evolution' | 'connections';
+
+export type DreamstateLensGroup = {
+    key: string;
+    label: string;
+    nodes: SurfaceTreeNode[];
+};
+
+const EVOLUTION_STAGE_ORDER = ['settled', 'returned', 'matured', 'candidate', 'selected', 'observed'];
+
+const EVOLUTION_STAGE_LABELS: Record<string, string> = {
+    settled: 'Settled by Sensemaker',
+    returned: 'Returned from Dreamstate',
+    matured: 'Matured',
+    candidate: 'Became candidate',
+    selected: 'Selected for Dreamstate',
+    observed: 'Not evolved yet',
+};
+
+// The lens groupings below are typed transformers over fields the backend
+// already resolved (memory_kind, evolution_stage, run/sender/source meta).
+// They arrange meaning islands; they never re-derive provenance, lineage,
+// or relationships client-side.
+
+// About lens: impressions grouped by their resolved meaning kind, largest
+// groups first, with unresolved impressions gathered at the end.
+export function aboutLensGroups(nodes: SurfaceTreeNode[]): DreamstateLensGroup[] {
+    const groups = new Map<string, DreamstateLensGroup>();
+
+    for (const node of nodes) {
+        const kind = displayKindFor(metaString(node.meta, 'memory_kind'));
+        const label = kind.slug === 'unknown' ? 'Unknown / unclassified' : kind.label;
+        const group = groups.get(kind.slug) ?? { key: `about:${kind.slug}`, label, nodes: [] };
+
+        group.nodes.push(node);
+        groups.set(kind.slug, group);
+    }
+
+    return [...groups.values()].sort((a, b) => {
+        const aUnknown = a.label === 'Unknown / unclassified' ? 1 : 0;
+        const bUnknown = b.label === 'Unknown / unclassified' ? 1 : 0;
+
+        return aUnknown - bUnknown || b.nodes.length - a.nodes.length || a.label.localeCompare(b.label);
+    });
+}
+
+// Evolution lens: impressions grouped by how far they moved through
+// Dreamstate, most evolved first; impressions with no lineage answer come
+// last.
+export function evolutionLensGroups(nodes: SurfaceTreeNode[]): DreamstateLensGroup[] {
+    const groups = new Map<string, DreamstateLensGroup>();
+
+    for (const node of nodes) {
+        const stage = metaString(node.meta, 'evolution_stage') ?? 'unresolved';
+        const label = stage === 'unresolved'
+            ? 'No evolution recorded yet'
+            : metaString(node.meta, 'evolution_label') ?? EVOLUTION_STAGE_LABELS[stage] ?? stage;
+        const group = groups.get(stage) ?? { key: `evolution:${stage}`, label, nodes: [] };
+
+        group.nodes.push(node);
+        groups.set(stage, group);
+    }
+
+    const rank = (stage: string) => {
+        const index = EVOLUTION_STAGE_ORDER.indexOf(stage);
+
+        return index === -1 ? EVOLUTION_STAGE_ORDER.length : index;
+    };
+
+    return [...groups.entries()]
+        .sort(([a], [b]) => rank(a) - rank(b))
+        .map(([, group]) => group);
+}
+
+// Connections lens: clusters of impressions that share a resolved
+// relationship — the same Dreamstate run, the same sender, or the same
+// source. Each impression joins its first matching cluster; loners gather
+// at the end.
+export function connectionLensGroups(nodes: SurfaceTreeNode[]): DreamstateLensGroup[] {
+    const clusterings: { prefix: string; labelFor: (value: string) => string; valueFor: (node: SurfaceTreeNode) => string | null }[] = [
+        { prefix: 'run', labelFor: () => 'Dreamed together', valueFor: (node) => metaString(node.meta, 'run_id') },
+        { prefix: 'sender', labelFor: (value) => `From ${value}`, valueFor: (node) => metaString(node.meta, 'email_from') },
+        { prefix: 'source', labelFor: (value) => `From ${value}`, valueFor: (node) => metaString(node.meta, 'contains_source_label') },
+    ];
+
+    const clusters: DreamstateLensGroup[] = [];
+    const remaining = new Set(nodes);
+
+    for (const clustering of clusterings) {
+        const byValue = new Map<string, SurfaceTreeNode[]>();
+
+        for (const node of remaining) {
+            const value = clustering.valueFor(node);
+
+            if (value !== null) {
+                byValue.set(value, [...byValue.get(value) ?? [], node]);
+            }
+        }
+
+        for (const [value, members] of byValue) {
+            if (members.length < 2) {
+                continue;
+            }
+
+            clusters.push({
+                key: `cluster:${clustering.prefix}:${value}`,
+                label: clustering.labelFor(value),
+                nodes: members,
+            });
+
+            for (const member of members) {
+                remaining.delete(member);
+            }
+        }
+    }
+
+    clusters.sort((a, b) => b.nodes.length - a.nodes.length || a.label.localeCompare(b.label));
+
+    if (remaining.size > 0) {
+        clusters.push({
+            key: 'cluster:none',
+            label: 'Not clustered yet',
+            nodes: nodes.filter((node) => remaining.has(node)),
+        });
+    }
+
+    return clusters;
+}
+
 export function nodeToDreamstatePayload(node: SurfaceTreeNode): Record<string, unknown> {
     return {
         key: node.key,

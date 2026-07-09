@@ -178,13 +178,17 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('Not evolved yet. This impression was observed but has not become a Dreamstate candidate.', $card);
         $this->assertStringContainsString('No Dreamstate evolution recorded yet.', $card);
 
-        // The presenter only reads the resolved evolution meta; it never
-        // derives progression from statuses or ids client-side.
-        $this->assertStringContainsString('meta.evolution_stage', $display);
-        $this->assertStringContainsString('meta.evolution_label', $display);
-        $this->assertStringContainsString('meta.evolution_steps', $display);
-        $this->assertStringNotContainsString('run_id', $display);
-        $this->assertStringNotContainsString('packet_id', $display);
+        // The evolution reader only consumes the resolved evolution meta; it
+        // never derives progression from statuses or ids client-side. (The
+        // connections lens may use resolved run ids as cluster keys, so the
+        // pin is scoped to the reader itself.)
+        $evolutionReader = substr($display, strpos($display, 'export function evolutionViewFrom'));
+        $evolutionReader = substr($evolutionReader, 0, strpos($evolutionReader, 'export type'));
+        $this->assertStringContainsString('meta.evolution_stage', $evolutionReader);
+        $this->assertStringContainsString('meta.evolution_label', $evolutionReader);
+        $this->assertStringContainsString('meta.evolution_steps', $evolutionReader);
+        $this->assertStringNotContainsString('run_id', $evolutionReader);
+        $this->assertStringNotContainsString('packet_id', $evolutionReader);
 
         // Technical lineage ids stay behind the collapsed technical drawer.
         $this->assertStringContainsString("{ label: 'candidate id', value: asString(valueFromPayload(['candidate_id'])) }", $card);
@@ -240,6 +244,39 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('copyTechnicalValue(field)', $card);
         $this->assertStringContainsString('navigator.clipboard.writeText', $card);
         $this->assertSame(1, substr_count($card, 'surface-tree__dreamstate-copy'));
+    }
+
+    public function test_dreamstate_listing_is_structured_by_about_evolution_and_connections_lenses(): void
+    {
+        $listing = File::get(resource_path('js/components/surface-tree/DreamstateListingCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The page offers the three human lenses, with About as the default.
+        $this->assertStringContainsString("{ lens: 'about', label: 'About' }", $listing);
+        $this->assertStringContainsString("{ lens: 'evolution', label: 'Evolution' }", $listing);
+        $this->assertStringContainsString("{ lens: 'connections', label: 'Connections' }", $listing);
+        $this->assertStringContainsString("ref<DreamstateLens>('about')", $listing);
+        $this->assertStringContainsString('aria-label="Dreamstate lenses"', $listing);
+
+        // Every lens renders grouped meaning islands of cards, never a flat
+        // technical table.
+        $this->assertStringContainsString('lensGroups', $listing);
+        $this->assertStringContainsString('surface-tree__dreamstate-lens-group-title', $listing);
+        $this->assertStringContainsString('DreamstateImpressionCard', $listing);
+
+        // Groupings are typed transformers over backend-resolved fields.
+        $this->assertStringContainsString('export function aboutLensGroups', $display);
+        $this->assertStringContainsString('export function evolutionLensGroups', $display);
+        $this->assertStringContainsString('export function connectionLensGroups', $display);
+        $this->assertStringContainsString("'Unknown / unclassified'", $display);
+        $this->assertStringContainsString("'Not clustered yet'", $display);
+
+        // Evolution prioritises the most evolved impressions first.
+        $this->assertStringContainsString("const EVOLUTION_STAGE_ORDER = ['settled', 'returned', 'matured', 'candidate', 'selected', 'observed'];", $display);
+
+        // Connection clusters carry human labels, not identifiers.
+        $this->assertStringContainsString("() => 'Dreamed together'", $display);
+        $this->assertStringContainsString('`From ${value}`', $display);
     }
 
     public function test_surface_tree_components_include_readability_class_hooks(): void

@@ -140,6 +140,34 @@
         @apply grid gap-4;
     }
 
+    & .surface-tree__dreamstate-lenses {
+        @apply mb-4 flex flex-wrap gap-2;
+    }
+
+    & .surface-tree__dreamstate-lens {
+        @apply cursor-pointer rounded-full border border-gray-700 bg-transparent px-3 py-1 text-sm text-inherit opacity-75;
+
+        &:hover {
+            @apply bg-gray-800 opacity-100;
+        }
+    }
+
+    & .surface-tree__dreamstate-lens--active {
+        @apply border-emerald-800 bg-emerald-950 font-medium text-emerald-300 opacity-100;
+    }
+
+    & .surface-tree__dreamstate-lens-group {
+        @apply grid gap-3;
+    }
+
+    & .surface-tree__dreamstate-lens-group-title {
+        @apply m-0 flex items-baseline gap-2 text-sm font-semibold text-gray-100;
+    }
+
+    & .surface-tree__dreamstate-lens-group-count {
+        @apply rounded-full bg-gray-800 px-2 py-0.5 text-xs font-normal text-gray-300;
+    }
+
     & .surface-tree__dreamstate-card {
         @apply grid gap-3 rounded-lg p-4;
         background-color: var(--gray-900);

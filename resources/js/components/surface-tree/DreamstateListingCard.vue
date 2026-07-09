@@ -5,17 +5,43 @@
             What the system noticed, connected, and transformed — most recent first.
         </p>
 
+        <div class="surface-tree__dreamstate-lenses" role="group" aria-label="Dreamstate lenses">
+            <button
+                v-for="option in lensOptions"
+                :key="option.lens"
+                type="button"
+                :class="[
+                    'surface-tree__dreamstate-lens',
+                    lens === option.lens ? 'surface-tree__dreamstate-lens--active' : '',
+                ]"
+                :aria-pressed="lens === option.lens"
+                @click="lens = option.lens"
+            >{{ option.label }}</button>
+        </div>
+
         <section class="surface-tree__dreamstate-list" aria-label="Dreamstate impressions">
             <p v-if="isLoading" class="surface-tree__corpus-muted">Loading impressions...</p>
             <p v-else-if="loadError" class="surface-tree__corpus-muted" role="alert">{{ loadError }}</p>
             <p v-else-if="impressions.length === 0" class="surface-tree__corpus-muted">No Dreamstate impressions available.</p>
 
             <template v-else>
-                <DreamstateImpressionCard
-                    v-for="impression in impressions"
-                    :key="impression.key"
-                    :state="impressionState(impression)"
-                />
+                <section
+                    v-for="group in lensGroups"
+                    :key="group.key"
+                    class="surface-tree__dreamstate-lens-group"
+                    :aria-label="group.label"
+                >
+                    <h3 class="surface-tree__dreamstate-lens-group-title">
+                        {{ group.label }}
+                        <span class="surface-tree__dreamstate-lens-group-count">{{ group.nodes.length }}</span>
+                    </h3>
+
+                    <DreamstateImpressionCard
+                        v-for="impression in group.nodes"
+                        :key="impression.key"
+                        :state="impressionState(impression)"
+                    />
+                </section>
             </template>
         </section>
     </article>
@@ -24,7 +50,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import DreamstateImpressionCard from './DreamstateImpressionCard.vue';
-import { nodeToDreamstatePayload } from './dreamstateDisplay';
+import {
+    aboutLensGroups,
+    connectionLensGroups,
+    evolutionLensGroups,
+    nodeToDreamstatePayload,
+    type DreamstateLens,
+} from './dreamstateDisplay';
 import type { SurfaceMainContentState, SurfaceTreeNode } from './types';
 
 const props = defineProps<{
@@ -37,11 +69,32 @@ const impressions = ref<SurfaceTreeNode[]>([]);
 const isLoading = ref(false);
 const loadError = ref<string | null>(null);
 
+// The page is structured by human lenses, with About as the front door.
+const lens = ref<DreamstateLens>('about');
+
+const lensOptions: { lens: DreamstateLens; label: string }[] = [
+    { lens: 'about', label: 'About' },
+    { lens: 'evolution', label: 'Evolution' },
+    { lens: 'connections', label: 'Connections' },
+];
+
+const lensGroups = computed(() => {
+    switch (lens.value) {
+        case 'evolution':
+            return evolutionLensGroups(impressions.value);
+        case 'connections':
+            return connectionLensGroups(impressions.value);
+        default:
+            return aboutLensGroups(impressions.value);
+    }
+});
+
 watch(
     () => selectedNodeKey.value,
     (nodeKey) => {
         impressions.value = [];
         loadError.value = null;
+        lens.value = 'about';
 
         if (nodeKey) {
             fetchImpressions(nodeKey);
