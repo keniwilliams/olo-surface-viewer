@@ -11,7 +11,7 @@ Controllers may:
 * receive the request
 * authorize through Policies or Gates
 * validate through Form Requests
-* call one model or one service
+* call one model or one repository
 * return an API Resource, response object, redirect, or view
 
 Controllers must not:
@@ -42,30 +42,62 @@ Models may define:
 
 Use models for single-model reads and single-row meaning.
 
-Do not move single-model logic into a service unless it coordinates with another model, database, queue, API, or external source.
+Do not move single-model logic into a repository unless it is genuine data-access/query logic. Do not move single-model logic into a trait unless a second unrelated class also needs it.
 
-### Services
+### Repositories
 
-Services exist only to coordinate work across multiple models, databases, queues, APIs, or external sources.
+Default pattern: a Repository (with Interface) sits in front of each Model that has non-trivial data-access logic.
 
-Services may:
+Repositories may:
 
-* combine model results
-* coordinate cross-database reads
-* coordinate queued or external work
-* return normalized backend data
+* hold named query methods (`findActive()`, `forDateRange()`, `forOwner()`)
+* compose complex queries too involved for a simple model scope
+* return typed models or collections
 
-Services must not:
+Repositories must not:
 
+* contain cross-model orchestration
+* contain business/workflow decisions
 * perform runtime schema discovery
 * guess available columns
 * use generic mixed row adapters
-* replace model scopes/accessors
-* become dumping grounds for single-model logic
-* hide validation or authorization
-* contain unrelated feature logic under a broad service name
 
-If logic only concerns one model/table/view, prefer a model scope, accessor, cast, or explicit model method.
+A Repository is justified only when a model's data-access logic is complex or reused enough that a plain scope/accessor would clutter the model class. If the query is a single simple `where()`, keep it as a model scope. Do not create a Repository that only proxies a single trivial model query.
+
+Controllers, Jobs, and Commands call Repositories directly. There is no Service layer by default.
+
+### Interfaces
+
+Every Repository is paired with an Interface. Consumers (Controllers, Jobs, Commands) type-hint the Interface, not the concrete Repository.
+
+The Interface's only purpose is decoupling consumers from the concrete implementation.
+
+If a Service is later introduced in front of a Repository, the Interface is dropped. The Service becomes the decoupling boundary instead — maintaining both is redundant.
+
+### Services
+
+Services are not the default pattern. Do not create a Service in front of a Repository unless a Repository already exists beneath it.
+
+A Service exists only in front of an existing Repository, and only when introduced deliberately, not inferred from the number of models or repositories a piece of code happens to touch.
+
+When a Service is introduced:
+
+* it may combine results from multiple Repositories
+* it may coordinate cross-database, queued, or external work
+* it must not perform runtime schema discovery, guess columns, or use mixed-shape adapters
+* the Repository Interface beneath it is removed
+
+### Traits
+
+A Trait is justified only when the same behavior is needed by two or more unrelated classes (unrelated meaning no shared parent it could live on instead).
+
+Common valid uses:
+
+* shared query shape across Repositories (date-range filtering, cursor pagination, owner scoping)
+* shared Model behavior that isn't a relationship or cast (contract-version checks, status helpers)
+* shared Repository boilerplate (`findOrFail`, `all`, `paginate`) reused across otherwise unrelated Repositories
+
+Do not create a Trait for a single consumer. Inline the method; extract into a Trait only when a second unrelated class needs the same behavior.
 
 ### API Resources and Response Shape
 
@@ -97,9 +129,9 @@ Use named-column selects.
 
 Avoid `DB::table()` and raw SQL unless:
 
-* the query cannot reasonably be expressed through an existing model
+* the query cannot reasonably be expressed through an existing model or repository
 * the query is performance-critical and documented
-* the raw query is isolated in a model-specific method or clearly named service method
+* the raw query is isolated in a model-specific method or repository method
 * the selected columns are explicit
 
 Never use `SELECT *` in application queries.
@@ -189,18 +221,18 @@ Some boundary rules cannot be fully enforced by static analysis.
 
 These require PR review judgement:
 
-* Whether a service name is too broad for the logic it contains.
-* Whether a service mixes unrelated feature concerns.
-* Whether a raw query truly cannot reasonably be expressed through an existing model.
+* Whether a repository method belongs on the model instead as a simple accessor/scope.
+* Whether a trait is genuinely shared or premature (used by only one class).
+* Whether a raw query truly cannot reasonably be expressed through an existing repository or model.
 * Whether a class has grown large because the domain is genuinely complex or because unrelated concerns have accumulated.
 
 Use this review rule:
 
-If a service coordinates more than one domain concern, or grows beyond a clear single purpose, split it or move single-model logic back to the relevant model.
+If a repository or model has grown beyond a clear single purpose, split it or move logic to where it actually belongs.
 
-As a warning sign, review any service that has:
+As a warning sign, review any class that has:
 
-* more than one public orchestration method
+* more than one clear responsibility
 * unrelated model groups
 * repeated private helper chains
 * mixed read/write responsibilities
@@ -215,7 +247,7 @@ Use:
 * PHPStan for type correctness
 * architecture tests or dependency rules for layer boundaries
 * tests for query count and N+1-sensitive paths
-* PR review checklist for controller/service/model boundaries
+* PR review checklist for controller/repository/model boundaries
 
 At minimum, new code must not introduce:
 
@@ -225,3 +257,6 @@ At minimum, new code must not introduce:
 * `SELECT *`
 * per-row queries in listing views
 * generic mixed-shape adapters
+* a Service class created without an existing Repository beneath it
+* a Repository created for a single trivial model query
+* a Trait created for a single consumer
