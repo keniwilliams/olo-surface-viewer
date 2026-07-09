@@ -65,30 +65,87 @@ export function evolutionViewFrom(meta: Record<string, unknown>): DreamstateEvol
     return { stage, label, steps, evolved: stage !== 'observed' };
 }
 
-// Linked impressions may arrive as an array of ids or of objects; anything
-// else is treated as no connections so unknown shapes render safely.
-export function linkedImpressionsFrom(meta: Record<string, unknown>): { id: string | null; label: string }[] {
-    const raw = meta.linked_impressions ?? meta.linkedImpressions ?? meta.links;
+export type DreamstateContains = {
+    available: boolean;
+    contentKind: 'email' | 'code' | 'document' | 'unknown';
+    title: string | null;
+    sourceLabel: string | null;
+    excerpt: string | null;
+    items: string[];
+    emailFrom: string | null;
+    emailSubject: string | null;
+    emailDate: string | null;
+    emailExcerpt: string | null;
+};
 
-    if (!Array.isArray(raw)) {
-        return [];
+// Reads the contains_* fields the backend presenter normalised into node
+// meta. This is a typed reader only — the shape of the contents was decided
+// server-side, and nothing here inspects raw payloads or identifiers.
+export function containsFrom(meta: Record<string, unknown>): DreamstateContains {
+    const contentKind = meta.contains_content_kind;
+
+    return {
+        available: meta.contains_available === true,
+        contentKind: contentKind === 'email' || contentKind === 'code' || contentKind === 'document' ? contentKind : 'unknown',
+        title: metaString(meta, 'contains_title'),
+        sourceLabel: metaString(meta, 'contains_source_label'),
+        excerpt: metaString(meta, 'contains_excerpt'),
+        items: Array.isArray(meta.contains_items)
+            ? meta.contains_items.filter((item): item is string => typeof item === 'string' && item !== '')
+            : [],
+        emailFrom: metaString(meta, 'email_from'),
+        emailSubject: metaString(meta, 'email_subject'),
+        emailDate: metaString(meta, 'email_date'),
+        emailExcerpt: metaString(meta, 'email_excerpt'),
+    };
+}
+
+function metaString(meta: Record<string, unknown>, key: string): string | null {
+    const value = meta[key];
+
+    return typeof value === 'string' && value !== '' ? value : null;
+}
+
+export type DreamstateConnectionGroup = {
+    kind: string;
+    label: string;
+    count: number;
+};
+
+export type DreamstateConnectionsView = {
+    count: number;
+    groups: DreamstateConnectionGroup[];
+};
+
+// Reads the grouped connection summaries the backend presenter resolved:
+// human relationship labels with counts, never raw ids. Returns null when
+// the resolver could not check this impression so the card can show a calm
+// unavailable state; unknown shapes degrade to no groups.
+export function connectionsFrom(meta: Record<string, unknown>): DreamstateConnectionsView | null {
+    if (meta.connections_available !== true) {
+        return null;
     }
 
-    return raw.flatMap((entry) => {
-        if (typeof entry === 'string' && entry !== '') {
-            return [{ id: entry, label: entry }];
-        }
+    const groups = Array.isArray(meta.connections)
+        ? meta.connections.flatMap((entry): DreamstateConnectionGroup[] => {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+                return [];
+            }
 
-        if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
             const record = entry as Record<string, unknown>;
-            const id = typeof record.impression_id === 'string' ? record.impression_id : null;
-            const label = typeof record.label === 'string' && record.label !== '' ? record.label : id;
+            const kind = typeof record.kind === 'string' && record.kind !== '' ? record.kind : null;
+            const label = typeof record.label === 'string' && record.label !== '' ? record.label : null;
+            const count = typeof record.count === 'number' && Number.isFinite(record.count) ? record.count : 0;
 
-            return label ? [{ id, label }] : [];
-        }
+            return kind && label && count > 0 ? [{ kind, label, count }] : [];
+        })
+        : [];
 
-        return [];
-    });
+    const count = typeof meta.connection_count === 'number' && Number.isFinite(meta.connection_count)
+        ? meta.connection_count
+        : groups.reduce((total, group) => total + group.count, 0);
+
+    return { count, groups };
 }
 
 export function nodeToDreamstatePayload(node: SurfaceTreeNode): Record<string, unknown> {

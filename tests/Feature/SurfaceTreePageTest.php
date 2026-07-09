@@ -137,6 +137,33 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('provenance_resolution_error', $card);
     }
 
+    public function test_dreamstate_contains_section_renders_normalised_human_fields(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Contains section reads only the contains_*/email_* fields the
+        // backend presenter normalised, never raw payloads or identifiers.
+        $this->assertStringContainsString('containsFrom(meta.value)', $card);
+        $this->assertStringContainsString('contains.emailFrom', $card);
+        $this->assertStringContainsString('contains.emailSubject', $card);
+        $this->assertStringContainsString('formattedEmailDate', $card);
+        $this->assertStringContainsString('contains.emailExcerpt', $card);
+        $this->assertStringContainsString('contains.sourceLabel', $card);
+        $this->assertStringContainsString('contains.excerpt', $card);
+        $this->assertStringContainsString('contains.items', $card);
+        $this->assertStringContainsString('No contents summary available yet.', $card);
+
+        $this->assertStringContainsString("metaString(meta, 'contains_excerpt')", $display);
+        $this->assertStringContainsString("metaString(meta, 'contains_source_label')", $display);
+        $this->assertStringContainsString("metaString(meta, 'email_from')", $display);
+        $this->assertStringContainsString("meta.contains_available === true", $display);
+
+        // Full corpus stays behind the Open contents action.
+        $this->assertStringContainsString('v-if="showContents"', $card);
+        $this->assertStringContainsString('Open contents', $card);
+    }
+
     public function test_dreamstate_evolution_renders_plain_state_labels_from_resolved_lineage(): void
     {
         $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
@@ -162,6 +189,32 @@ class SurfaceTreePageTest extends TestCase
         // Technical lineage ids stay behind the collapsed technical drawer.
         $this->assertStringContainsString("{ label: 'candidate id', value: asString(valueFromPayload(['candidate_id'])) }", $card);
         $this->assertStringContainsString("{ label: 'sensemaker request id', value: asString(valueFromPayload(['sensemaker_request_id'])) }", $card);
+    }
+
+    public function test_dreamstate_connections_render_grouped_plain_language_labels_without_ids(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Connections section renders the backend-resolved groups as
+        // labels with counts, with plain fallbacks for "nothing linked" and
+        // "could not check".
+        $this->assertStringContainsString('connectionsFrom(meta.value)', $card);
+        $this->assertStringContainsString('group.count', $card);
+        $this->assertStringContainsString('group.label', $card);
+        $this->assertStringContainsString('No linked impressions found yet.', $card);
+        $this->assertStringContainsString('Connections could not be checked for this impression.', $card);
+
+        // No raw ids or client-side relationship inference in the default
+        // connections surface.
+        $this->assertStringNotContainsString('linkedImpressionsFrom', $card);
+        $this->assertStringNotContainsString('encodeURIComponent(link.id)', $card);
+        $this->assertStringNotContainsString('linked_impressions', $display);
+
+        // The presenter only reads the normalised connection meta.
+        $this->assertStringContainsString('meta.connections_available !== true', $display);
+        $this->assertStringContainsString('meta.connections', $display);
+        $this->assertStringContainsString('meta.connection_count', $display);
     }
 
     public function test_surface_tree_components_include_readability_class_hooks(): void
