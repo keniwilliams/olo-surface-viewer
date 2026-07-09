@@ -7,73 +7,101 @@ use Tests\TestCase;
 
 class SurfaceTreeArchitectureTest extends TestCase
 {
-    public function test_filesystem_traverser_builds_nodes_only(): void
+    public function test_filesystem_traverser_reads_through_the_feed_model_only(): void
     {
         $traverser = File::get(app_path('Services/SurfaceTree/FilesystemTreeTraverser.php'));
 
+        $this->assertFileDoesNotExist(app_path('Services/SurfaceTree/ImpressionsFilesystemFeed.php'));
+        $this->assertStringContainsString('use App\Models\Impressions\ImpressionDreamstateFeed;', $traverser);
+        $this->assertStringContainsString('ImpressionDreamstateFeed::latestPathBearingForSurfaceTree(', $traverser);
+        $this->assertStringContainsString('ImpressionDreamstateFeed::findForSurfaceTreeCorpus(', $traverser);
+        $this->assertStringContainsString('decodedRawCorpus()', $traverser);
         $this->assertStringNotContainsString('DB::connection', $traverser);
         $this->assertStringNotContainsString('Schema::', $traverser);
         $this->assertStringNotContainsString('->table(', $traverser);
-        $this->assertStringNotContainsString('impressions_dreamstate_feed', $traverser);
         $this->assertStringNotContainsString('sensemade_impressions', $traverser);
         $this->assertStringNotContainsString('to_regclass', $traverser);
-        $this->assertStringContainsString('ImpressionsFilesystemFeed', $traverser);
     }
 
-    public function test_filesystem_feed_reads_through_read_only_eloquent_models(): void
+    public function test_surface_tree_read_path_has_no_runtime_schema_probing(): void
     {
-        $feed = File::get(app_path('Services/SurfaceTree/ImpressionsFilesystemFeed.php'));
+        // The feed services and their schema-archaeology trait are gone: the
+        // model contracts define the expected shape, and nothing in the
+        // surface tree read path probes tables or columns at runtime.
+        $this->assertFileDoesNotExist(app_path('Services/SurfaceTree/DomainImpressionsFeed.php'));
+        $this->assertFileDoesNotExist(app_path('Services/SurfaceTree/ImpressionsFilesystemFeed.php'));
+        $this->assertFileDoesNotExist(app_path('Services/SurfaceTree/Concerns/ReadsEloquentSources.php'));
 
-        $this->assertStringContainsString('use App\Models\Impressions\ImpressionDreamstateFeed;', $feed);
-        $this->assertStringContainsString('use App\Models\Impressions\SensemadeImpression;', $feed);
-        $this->assertStringContainsString('use App\Models\Impressions\Impression;', $feed);
-        $this->assertStringContainsString('ImpressionDreamstateFeed::class', $feed);
-        $this->assertStringContainsString('$modelClass::query()', $feed);
-        $this->assertStringNotContainsString('DB::connection', $feed);
-        $this->assertStringNotContainsString('->table(', $feed);
+        foreach (File::allFiles(app_path('Services/SurfaceTree')) as $file) {
+            $source = File::get($file->getPathname());
+
+            $this->assertStringNotContainsString('sourceExists', $source, $file->getFilename());
+            $this->assertStringNotContainsString('to_regclass', $source, $file->getFilename());
+            $this->assertStringNotContainsString('getColumnListing', $source, $file->getFilename());
+            $this->assertStringNotContainsString('ReadsEloquentSources', $source, $file->getFilename());
+        }
     }
 
-    public function test_email_traverser_builds_nodes_only(): void
+    public function test_impressions_feed_model_owns_the_surface_tree_read_contract(): void
     {
-        $traverser = File::get(app_path('Services/SurfaceTree/EmailTreeTraverser.php'));
+        $model = File::get(app_path('Models/Impressions/ImpressionDreamstateFeed.php'));
 
-        $this->assertStringNotContainsString('DB::connection', $traverser);
-        $this->assertStringNotContainsString('Schema::', $traverser);
-        $this->assertStringNotContainsString('->table(', $traverser);
-        $this->assertStringNotContainsString('sensemade_impressions', $traverser);
+        $this->assertStringContainsString('SURFACE_TREE_COLUMNS', $model);
+        $this->assertStringContainsString('public static function latestForSurfaceTree(', $model);
+        $this->assertStringContainsString('public static function latestPathBearingForSurfaceTree(', $model);
+        $this->assertStringContainsString('public static function findForSurfaceTreeCorpus(', $model);
+        $this->assertStringContainsString('public function decodedRawCorpus(): ?string', $model);
+
+        $sceneModel = File::get(app_path('Models/Impressions/CameraLensScenePayload.php'));
+
+        $this->assertStringContainsString('public static function latestForSurfaceTree(', $sceneModel);
+    }
+
+    public function test_email_reads_go_through_the_canonical_email_models_only(): void
+    {
+        $traverser = File::get(app_path('Services/SurfaceTree/DomainImpressionsTraverser.php'));
+
+        // The email service classes are gone: email reads go through the
+        // Email and EmailImpression models with named columns, no runtime
+        // source or column probing, orchestrated by the domain traverser.
+        $this->assertFileDoesNotExist(app_path('Services/SurfaceTree/EmailImpressionsFeed.php'));
+        $this->assertFileDoesNotExist(app_path('Services/SurfaceTree/EmailTreeTraverser.php'));
+        $this->assertStringContainsString('use App\Models\Sidecar\Email;', $traverser);
+        $this->assertStringContainsString('use App\Models\Impressions\EmailImpression;', $traverser);
+        $this->assertStringContainsString('Email::latestForSurfaceTree(', $traverser);
+        $this->assertStringContainsString('Email::forSurfaceTreeSender(', $traverser);
+        $this->assertStringContainsString('EmailImpression::forSourceReferences(', $traverser);
+        $this->assertStringNotContainsString('EmailImpressionsFeed', $traverser);
+        $this->assertStringNotContainsString('EmailMessage', $traverser);
+        $this->assertStringNotContainsString('EmailSync', $traverser);
+        $this->assertStringNotContainsString('sourceExists', $traverser);
         $this->assertStringNotContainsString('email_messages', $traverser);
-        $this->assertStringContainsString('EmailImpressionsFeed', $traverser);
     }
 
-    public function test_email_feed_reads_through_read_only_eloquent_models(): void
+    public function test_email_model_owns_the_surface_tree_read_contract(): void
     {
-        $feed = File::get(app_path('Services/SurfaceTree/EmailImpressionsFeed.php'));
+        $model = File::get(app_path('Models/Sidecar/Email.php'));
 
-        $this->assertStringContainsString('use App\Models\Sidecar\Email;', $feed);
-        $this->assertStringContainsString('use App\Models\Sidecar\EmailMessage;', $feed);
-        $this->assertStringContainsString('use App\Models\Sidecar\EmailSync;', $feed);
-        $this->assertStringContainsString('use App\Models\Impressions\EmailImpression;', $feed);
-        $this->assertStringContainsString('$modelClass::query()', $feed);
-        $this->assertStringContainsString('SENDER_CHILD_LIMIT = 50', $feed);
-        $this->assertStringContainsString('->select($profile[', $feed);
-        $this->assertStringContainsString('->toBase()', $feed);
-        $this->assertStringNotContainsString('limit(250)', $feed);
-        $this->assertStringNotContainsString('columns($modelClass)', $feed);
-        $this->assertStringNotContainsString('DB::connection', $feed);
-        $this->assertStringNotContainsString('->table(', $feed);
+        $this->assertStringContainsString('SURFACE_TREE_COLUMNS', $model);
+        $this->assertStringContainsString('public function scopeForSurfaceTree(', $model);
+        $this->assertStringContainsString('public static function latestForSurfaceTree(', $model);
+        $this->assertStringContainsString('public static function forSurfaceTreeSender(', $model);
+        $this->assertStringContainsString('public function scopeForMessageReferences(', $model);
+        $this->assertStringNotContainsString('SELECT *', $model);
     }
 
-    public function test_domain_impressions_traverser_builds_nodes_only(): void
+    public function test_domain_impressions_traverser_reads_through_models_and_telemetry_feed_only(): void
     {
         $traverser = File::get(app_path('Services/SurfaceTree/DomainImpressionsTraverser.php'));
 
         $this->assertStringNotContainsString('DB::connection', $traverser);
         $this->assertStringNotContainsString('Schema::', $traverser);
         $this->assertStringNotContainsString('->table(', $traverser);
-        $this->assertStringNotContainsString('impressions_dreamstate_feed', $traverser);
         $this->assertStringNotContainsString('sensemade_impressions', $traverser);
         $this->assertStringNotContainsString('Http::', $traverser);
-        $this->assertStringContainsString('DomainImpressionsFeed', $traverser);
+        $this->assertStringNotContainsString('DomainImpressionsFeed', $traverser);
+        $this->assertStringContainsString('ImpressionDreamstateFeed::latestForSurfaceTree(', $traverser);
+        $this->assertStringContainsString('CameraLensScenePayload::latestForSurfaceTree(', $traverser);
         $this->assertStringContainsString('CameraLensTelemetryFeed', $traverser);
     }
 
@@ -87,21 +115,6 @@ class SurfaceTreeArchitectureTest extends TestCase
         $this->assertStringNotContainsString('DB::connection', $feed);
         $this->assertStringNotContainsString('->table(', $feed);
         $this->assertStringNotContainsString('Model', $feed);
-    }
-
-    public function test_domain_impressions_feed_reads_through_read_only_eloquent_models(): void
-    {
-        $feed = File::get(app_path('Services/SurfaceTree/DomainImpressionsFeed.php'));
-
-        $this->assertStringContainsString('use App\Models\Impressions\CameraLensScenePayload;', $feed);
-        $this->assertStringContainsString('use App\Models\Impressions\ImpressionDreamstateFeed;', $feed);
-        $this->assertStringContainsString('use App\Models\Impressions\SensemadeImpression;', $feed);
-        $this->assertStringContainsString('use App\Models\Impressions\Impression;', $feed);
-        $this->assertStringContainsString('ImpressionDreamstateFeed::class', $feed);
-        $this->assertStringContainsString('CameraLensScenePayload::class', $feed);
-        $this->assertStringContainsString('$modelClass::query()', $feed);
-        $this->assertStringNotContainsString('DB::connection', $feed);
-        $this->assertStringNotContainsString('->table(', $feed);
     }
 
     public function test_surface_tree_models_are_read_only(): void
