@@ -252,6 +252,82 @@ class SurfaceTreeTraverserTest extends TestCase
         $this->assertSame('impressions_dreamstate_feed is not available', $node->meta['provenance_resolution_error']);
     }
 
+    public function test_dreamstate_email_impressions_contain_email_shaped_contents_from_sidecar(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-email', null, memoryKind: 'email', sourceRef: 'message-1'),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('email', $node->meta['contains_content_kind']);
+        $this->assertTrue($node->meta['contains_available']);
+        $this->assertSame('sender@example.com', $node->meta['email_from']);
+        $this->assertSame('Sidecar subject', $node->meta['email_subject']);
+        $this->assertSame('2026-07-05 11:58:00', $node->meta['email_date']);
+        $this->assertSame('Short preview.', $node->meta['email_excerpt']);
+    }
+
+    public function test_dreamstate_document_impressions_contain_document_shaped_contents(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow(
+                'dream-readme',
+                'docs/setup/readme.md',
+                memoryKind: 'readme',
+                rawCorpus: "# Getting started\n\nInstall the dependencies before anything else.\n\n## Requirements\n\nMore detail here.",
+            ),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('document', $node->meta['contains_content_kind']);
+        $this->assertTrue($node->meta['contains_available']);
+        $this->assertSame('readme.md', $node->meta['contains_source_label']);
+        $this->assertSame(['Getting started', 'Requirements'], $node->meta['contains_items']);
+        $this->assertStringContainsString('Install the dependencies', $node->meta['contains_excerpt']);
+    }
+
+    public function test_dreamstate_code_impressions_list_declared_classes_and_functions(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow(
+                'dream-code',
+                'app/Services/InvoiceService.php',
+                memoryKind: 'code',
+                rawCorpus: "<?php\n\nclass InvoiceService\n{\n    public function totals(): array {}\n}\n",
+            ),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('code', $node->meta['contains_content_kind']);
+        $this->assertSame(['InvoiceService', 'totals'], $node->meta['contains_items']);
+        $this->assertSame('InvoiceService.php', $node->meta['contains_source_label']);
+    }
+
+    public function test_dreamstate_contains_falls_back_safely_for_unresolved_impressions(): void
+    {
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-mystery', null, contractVersion: null),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('unknown', $node->meta['contains_content_kind']);
+        $this->assertFalse($node->meta['contains_available']);
+        $this->assertArrayNotHasKey('email_from', $node->meta);
+        $this->assertArrayNotHasKey('contains_excerpt', $node->meta);
+    }
+
     public function test_dreamstate_impressions_carry_a_one_sentence_summary_from_the_raw_corpus(): void
     {
         $this->createDreamstateFeedTable();

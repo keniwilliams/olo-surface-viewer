@@ -28,6 +28,7 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
         private readonly CameraLensTelemetryFeed $telemetryFeed,
         private readonly DreamstateProvenanceResolver $provenance,
         private readonly DreamstateEvolutionResolver $evolution,
+        private readonly DreamstateContainsPresenter $contains,
     ) {}
 
     /**
@@ -113,7 +114,21 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
             ? $this->evolution->resolveMany(array_map(strval(...), array_keys($rowsById)))
             : [];
 
+        $emailsByReference = $domain === 'dreamstate'
+            ? $this->contains->emailRowsByReference($this->emailReferences($rowsById, $provenanceById))
+            : [];
+
         foreach ($rowsById as $impressionId => $row) {
+            $rowProvenance = $provenanceById[$impressionId] ?? [];
+            $memoryKind = $rowProvenance['memory_kind'] ?? null;
+
+            $containsMeta = $domain === 'dreamstate'
+                ? $this->contains->containsMetaFor(
+                    $row,
+                    is_string($memoryKind) ? $memoryKind : null,
+                    $this->emailRowFor($row, $emailsByReference),
+                )
+                : [];
             $impression = $this->impressionNode(
                 impressionId: (string) $impressionId,
                 label: $this->value($row, ['label', 'title', 'name'])
@@ -132,7 +147,8 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
                     'source_path' => $this->value($row, ['source_path']),
                     'schema' => $this->value($row, ['schema']),
                     'summary' => $domain === 'dreamstate' ? $this->corpusSummary($row) : null,
-                    ...($provenanceById[$impressionId] ?? []),
+                    ...$containsMeta,
+                    ...$rowProvenance,
                     ...($evolutionById[$impressionId] ?? []),
                 ],
             );
@@ -182,6 +198,53 @@ class DomainImpressionsTraverser implements SurfaceTreeDomainTraverser
         }
 
         return array_values($records);
+    }
+
+    /**
+     * Source references of the email-kind impressions in one listing, so the
+     * contains presenter can enrich them from sidecar in a single batch.
+     *
+     * @param  array<int|string, mixed>  $rowsById
+     * @param  array<int|string, array<string, mixed>>  $provenanceById
+     * @return list<string>
+     */
+    private function emailReferences(array $rowsById, array $provenanceById): array
+    {
+        $references = [];
+
+        foreach ($rowsById as $impressionId => $row) {
+            if (($provenanceById[$impressionId]['memory_kind'] ?? null) !== 'email') {
+                continue;
+            }
+
+            $reference = $this->value($row, ['source_ref']);
+
+            if ($reference !== null) {
+                $references[$reference] = true;
+            }
+        }
+
+        // Array keys coerce numeric references to ints; the presenter
+        // expects strings.
+        return array_map(strval(...), array_keys($references));
+    }
+
+    /**
+     * @param  array<string, object>  $emailsByReference
+     */
+    private function emailRowFor(mixed $row, array $emailsByReference): ?object
+    {
+        if ($emailsByReference === []) {
+            return null;
+        }
+
+        $reference = $this->value($row, ['source_ref']);
+
+        if ($reference === null) {
+            return null;
+        }
+
+        return $emailsByReference[$reference] ?? null;
     }
 
     /**

@@ -137,6 +137,33 @@ class SurfaceTreePageTest extends TestCase
         $this->assertStringContainsString('provenance_resolution_error', $card);
     }
 
+    public function test_dreamstate_contains_section_renders_normalised_human_fields(): void
+    {
+        $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
+        $display = File::get(resource_path('js/components/surface-tree/dreamstateDisplay.ts'));
+
+        // The Contains section reads only the contains_*/email_* fields the
+        // backend presenter normalised, never raw payloads or identifiers.
+        $this->assertStringContainsString('containsFrom(meta.value)', $card);
+        $this->assertStringContainsString('contains.emailFrom', $card);
+        $this->assertStringContainsString('contains.emailSubject', $card);
+        $this->assertStringContainsString('formattedEmailDate', $card);
+        $this->assertStringContainsString('contains.emailExcerpt', $card);
+        $this->assertStringContainsString('contains.sourceLabel', $card);
+        $this->assertStringContainsString('contains.excerpt', $card);
+        $this->assertStringContainsString('contains.items', $card);
+        $this->assertStringContainsString('No contents summary available yet.', $card);
+
+        $this->assertStringContainsString("metaString(meta, 'contains_excerpt')", $display);
+        $this->assertStringContainsString("metaString(meta, 'contains_source_label')", $display);
+        $this->assertStringContainsString("metaString(meta, 'email_from')", $display);
+        $this->assertStringContainsString("meta.contains_available === true", $display);
+
+        // Full corpus stays behind the Open contents action.
+        $this->assertStringContainsString('v-if="showContents"', $card);
+        $this->assertStringContainsString('Open contents', $card);
+    }
+
     public function test_dreamstate_evolution_renders_plain_state_labels_from_resolved_lineage(): void
     {
         $card = File::get(resource_path('js/components/surface-tree/DreamstateImpressionCard.vue'));
