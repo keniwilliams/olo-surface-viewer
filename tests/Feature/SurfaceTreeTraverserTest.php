@@ -21,6 +21,7 @@ class SurfaceTreeTraverserTest extends TestCase
 
         $this->configureSqliteOrgan('impressions');
         $this->configureSqliteOrgan('sidecar');
+        $this->configureSqliteOrgan('subconscious');
         $this->createImpressionsTable();
         $this->createEmailImpressionsTable();
         $this->createSidecarEmailsTable();
@@ -271,6 +272,98 @@ class SurfaceTreeTraverserTest extends TestCase
             $dreamstate[0]->meta['summary'],
         );
         $this->assertArrayNotHasKey('summary', $dreamstate[1]->meta);
+    }
+
+    public function test_dreamstate_impressions_report_the_highest_known_evolution_stage(): void
+    {
+        $this->createDreamstateFeedTable();
+        $this->createDreamstateLineageTables();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-settled', null),
+        ]);
+
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_candidates')->insert([
+            ['candidate_id' => 'cand-1', 'run_id' => 'run-1', 'impression_id' => 'dream-settled', 'status' => 'pending'],
+        ]);
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_return_packet')->insert([
+            ['packet_id' => 'packet-1', 'run_id' => 'run-1', 'status' => 'ready'],
+        ]);
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_sensemaker_request')->insert([
+            ['request_id' => 'req-1', 'run_id' => 'run-1', 'impression_id' => 'dream-settled', 'status' => 'complete', 'completed_at' => '2026-07-05 13:00:00'],
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('settled', $node->meta['evolution_stage']);
+        $this->assertSame('Settled by Sensemaker', $node->meta['evolution_label']);
+        $this->assertSame(
+            ['Selected for Dreamstate', 'Became candidate', 'Returned from Dreamstate', 'Settled by Sensemaker'],
+            $node->meta['evolution_steps'],
+        );
+
+        // Technical lineage stays available for the technical drawer.
+        $this->assertSame('run-1', $node->meta['run_id']);
+        $this->assertSame('cand-1', $node->meta['candidate_id']);
+        $this->assertSame('packet-1', $node->meta['packet_id']);
+        $this->assertSame('req-1', $node->meta['sensemaker_request_id']);
+        $this->assertSame('complete', $node->meta['sensemaker_status']);
+    }
+
+    public function test_dreamstate_impressions_with_only_a_candidate_stop_at_that_stage(): void
+    {
+        $this->createDreamstateFeedTable();
+        $this->createDreamstateLineageTables();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-candidate', null),
+        ]);
+
+        DB::connection('subconscious')->table('dreamstate_schema.dreamstate_candidates')->insert([
+            ['candidate_id' => 'cand-2', 'run_id' => 'run-2', 'impression_id' => 'dream-candidate', 'status' => 'pending'],
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('candidate', $node->meta['evolution_stage']);
+        $this->assertSame('Became candidate', $node->meta['evolution_label']);
+        $this->assertSame(['Selected for Dreamstate', 'Became candidate'], $node->meta['evolution_steps']);
+        $this->assertArrayNotHasKey('packet_id', $node->meta);
+        $this->assertArrayNotHasKey('sensemaker_request_id', $node->meta);
+    }
+
+    public function test_dreamstate_impressions_without_lineage_report_not_evolved_yet(): void
+    {
+        $this->createDreamstateFeedTable();
+        $this->createDreamstateLineageTables();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-quiet', null),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('observed', $node->meta['evolution_stage']);
+        $this->assertSame('Not evolved yet', $node->meta['evolution_label']);
+        $this->assertArrayNotHasKey('evolution_steps', $node->meta);
+        $this->assertArrayNotHasKey('run_id', $node->meta);
+    }
+
+    public function test_dreamstate_listing_survives_when_the_subconscious_lineage_is_missing(): void
+    {
+        // No lineage tables exist on the sqlite subconscious double: the
+        // listing renders without any evolution claim at all.
+        $this->createDreamstateFeedTable();
+
+        DB::connection('impressions')->table('impressions_dreamstate_feed')->insert([
+            $this->dreamstateRow('dream-unlinked', null),
+        ]);
+
+        $node = app(DomainImpressionsTraverser::class)->children('domain:dreamstate', 0, 3)[0];
+
+        $this->assertSame('impression:dream-unlinked', $node->key);
+        $this->assertArrayNotHasKey('evolution_stage', $node->meta);
+        $this->assertArrayNotHasKey('evolution_steps', $node->meta);
     }
 
     public function test_domain_traverser_splits_camera_lens_into_scenes_and_telemetry_folders(): void
@@ -703,6 +796,34 @@ class SurfaceTreeTraverserTest extends TestCase
     /**
      * @return array<string, mixed>
      */
+    private function createDreamstateLineageTables(): void
+    {
+        // The dreamstate lineage lives in a Postgres schema; on the sqlite
+        // double an attached database answers the schema-qualified names.
+        DB::connection('subconscious')->statement("ATTACH DATABASE ':memory:' AS dreamstate_schema");
+
+        Schema::connection('subconscious')->create('dreamstate_schema.dreamstate_candidates', function ($table): void {
+            $table->string('candidate_id');
+            $table->string('run_id')->nullable();
+            $table->string('impression_id')->nullable();
+            $table->string('status')->nullable();
+        });
+
+        Schema::connection('subconscious')->create('dreamstate_schema.dreamstate_return_packet', function ($table): void {
+            $table->string('packet_id');
+            $table->string('run_id')->nullable();
+            $table->string('status')->nullable();
+        });
+
+        Schema::connection('subconscious')->create('dreamstate_schema.dreamstate_sensemaker_request', function ($table): void {
+            $table->string('request_id');
+            $table->string('run_id')->nullable();
+            $table->string('impression_id')->nullable();
+            $table->string('status')->nullable();
+            $table->timestampTz('completed_at')->nullable();
+        });
+    }
+
     private function dreamstateRow(
         string $impressionId,
         ?string $sourcePath,

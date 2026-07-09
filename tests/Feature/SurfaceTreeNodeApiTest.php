@@ -15,6 +15,7 @@ class SurfaceTreeNodeApiTest extends TestCase
 
         $this->configureSqliteOrgan('impressions');
         $this->configureSqliteOrgan('sidecar');
+        $this->configureSqliteOrgan('subconscious');
         $this->createImpressionsTable();
         $this->createEmailImpressionsTable();
         $this->createSidecarEmailsTable();
