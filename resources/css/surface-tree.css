@@ -258,6 +258,31 @@
         }
     }
 
+    & .surface-tree__dreamstate-technical-value {
+        @apply m-0 flex items-baseline justify-between gap-2;
+    }
+
+    & .surface-tree__dreamstate-technical-text {
+        @apply [overflow-wrap:anywhere];
+    }
+
+    & .surface-tree__dreamstate-copy {
+        @apply shrink-0 cursor-pointer rounded-md border border-gray-700 bg-transparent px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-inherit opacity-75;
+
+        &:hover {
+            @apply bg-gray-800 opacity-100;
+        }
+    }
+
+    & .surface-tree__dreamstate-raw {
+        @apply m-0 max-h-64 overflow-auto rounded-lg p-3 text-xs leading-5 [overflow-wrap:anywhere];
+        background-color: var(--gray-900);
+
+        & code {
+            @apply whitespace-pre-wrap;
+        }
+    }
+
     & .surface-tree__dreamstate-connections {
         @apply m-0 grid list-none gap-1.5 pl-0;
     }

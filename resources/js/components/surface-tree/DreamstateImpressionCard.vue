@@ -110,10 +110,23 @@
             <dl v-if="technicalFields.length > 0" class="surface-tree__details">
                 <div v-for="field in technicalFields" :key="field.label" class="surface-tree__detail-row">
                     <dt class="surface-tree__detail-label">{{ field.label }}</dt>
-                    <dd class="surface-tree__detail-value">{{ field.value }}</dd>
+                    <dd class="surface-tree__detail-value surface-tree__dreamstate-technical-value">
+                        <span class="surface-tree__dreamstate-technical-text">{{ field.value }}</span>
+                        <button
+                            type="button"
+                            class="surface-tree__dreamstate-copy"
+                            :aria-label="`Copy ${field.label}`"
+                            @click="copyTechnicalValue(field)"
+                        >{{ copiedLabel === field.label ? 'Copied' : 'Copy' }}</button>
+                    </dd>
                 </div>
             </dl>
             <p v-else class="surface-tree__corpus-muted">No technical details available.</p>
+
+            <h4 class="surface-tree__dreamstate-section-title">Raw payload</h4>
+            <!-- Contained, read-only pretty JSON of the node payload; scrolls
+                 inside its own box so it never dominates the page. -->
+            <pre class="surface-tree__dreamstate-raw"><code>{{ rawPayloadJson }}</code></pre>
         </section>
     </article>
 </template>
@@ -212,6 +225,7 @@ const technicalFields = computed(() => [
     { label: 'kind', value: asString(valueFromPayload(['kind'])) },
     { label: 'status', value: asString(valueFromPayload(['status', 'process_status'])) },
     { label: 'schema', value: asString(valueFromPayload(['schema'])) },
+    { label: 'source view', value: asString(valueFromPayload(['source_view'])) },
     { label: 'source ref', value: asString(valueFromPayload(['source_ref'])) },
     { label: 'source path', value: asString(valueFromPayload(['source_path'])) },
     { label: 'evolution stage', value: asString(valueFromPayload(['evolution_stage'])) },
@@ -224,6 +238,30 @@ const technicalFields = computed(() => [
     { label: 'observed at', value: observedAt.value },
 ].filter((field) => field.value));
 
+// Pretty JSON of the full node payload — the debugging receipt, only ever
+// rendered inside the collapsed technical drawer.
+const rawPayloadJson = computed(() => JSON.stringify(payload.value, null, 2));
+
+const copiedLabel = ref<string | null>(null);
+let copiedResetTimer: number | undefined;
+
+async function copyTechnicalValue(field: { label: string; value: string | null }) {
+    if (!field.value) {
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(field.value);
+        copiedLabel.value = field.label;
+        window.clearTimeout(copiedResetTimer);
+        copiedResetTimer = window.setTimeout(() => {
+            copiedLabel.value = null;
+        }, 1500);
+    } catch {
+        // Clipboard access can be denied; the value stays visible to select.
+    }
+}
+
 // A new impression resets everything the previous one loaded or expanded.
 watch(
     () => impressionId.value,
@@ -234,6 +272,7 @@ watch(
         showContents.value = false;
         showConnections.value = false;
         showTechnical.value = false;
+        copiedLabel.value = null;
     },
 );
 
