@@ -2,17 +2,23 @@
 
 namespace App\Services\SurfaceTree;
 
+use App\Models\Impressions\ImpressionDreamstateFeed;
 use App\Services\SurfaceTree\Concerns\BuildsSurfaceTreeNodes;
+use Illuminate\Database\Eloquent\Collection;
+use Throwable;
 
+/**
+ * Filesystem domain traverser: groups the path-bearing rows of the canonical
+ * impressions_dreamstate_feed view into a folder tree and serves the raw
+ * corpus lookup for the corpus endpoint. All reads go through the
+ * ImpressionDreamstateFeed model; a missing or unreadable feed yields an
+ * empty tree rather than an error.
+ */
 class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
 {
     use BuildsSurfaceTreeNodes;
 
-    const array CANDIDATES = ['source_path', 'source_ref', 'canonical_uri', 'path', 'file_path', 'source_reference'];
-
-    public function __construct(
-        private readonly ImpressionsFilesystemFeed $feed,
-    ) {}
+    private const int PATH_ROW_WINDOW = 500;
 
     /**
      * @return list<SurfaceTreeNode>
@@ -29,9 +35,9 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
             return [];
         }
 
-        $rows = $this->feed->latestPathBearingRows();
+        $rows = $this->pathBearingRows();
 
-        if ($rows === []) {
+        if ($rows->isEmpty()) {
             return [];
         }
 
@@ -40,8 +46,7 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         $impressions = [];
 
         foreach ($rows as $row) {
-            $path = $this->value($row, self::CANDIDATES);
-            $segments = $this->pathSegments($path);
+            $segments = $this->pathSegments($row->source_path);
 
             if ($segments === [] || ! $this->startsWithSegments($segments, $prefix)) {
                 continue;
@@ -83,7 +88,23 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
 
     public function rawCorpus(string $impressionId): ?string
     {
-        return $this->feed->rawCorpus($impressionId);
+        try {
+            return ImpressionDreamstateFeed::findForSurfaceTreeCorpus($impressionId)?->decodedRawCorpus();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return Collection<int, ImpressionDreamstateFeed>
+     */
+    private function pathBearingRows(): Collection
+    {
+        try {
+            return ImpressionDreamstateFeed::latestPathBearingForSurfaceTree(self::PATH_ROW_WINDOW);
+        } catch (Throwable) {
+            return new Collection;
+        }
     }
 
     /**
@@ -148,13 +169,13 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
     }
 
     /**
-     * @param  list<object>  $rows
+     * @param  Collection<int, ImpressionDreamstateFeed>  $rows
      * @param  list<string>  $prefix
      */
-    private function hasFilesystemChildren(array $rows, array $prefix): bool
+    private function hasFilesystemChildren(Collection $rows, array $prefix): bool
     {
         foreach ($rows as $row) {
-            $segments = $this->pathSegments($this->value($row, self::CANDIDATES));
+            $segments = $this->pathSegments($row->source_path);
 
             if ($this->startsWithSegments($segments, $prefix) && count($segments) > count($prefix)) {
                 return true;
@@ -172,26 +193,26 @@ class FilesystemTreeTraverser implements SurfaceTreeDomainTraverser
         return 'folder:filesystem:'.$this->encodeKeyPart(implode('/', $prefix));
     }
 
-    private function filesystemImpressionNode(object $row, int $depth, bool $isTerminalDepth): ?SurfaceTreeNode
+    private function filesystemImpressionNode(ImpressionDreamstateFeed $row, int $depth, bool $isTerminalDepth): ?SurfaceTreeNode
     {
-        $impressionId = $this->value($row, ['impression_id', 'uuid', 'id']);
+        $impressionId = $this->text($row->impression_id);
 
         if ($impressionId === null) {
             return null;
         }
 
-        $sourcePath = $this->value($row, self::CANDIDATES);
+        $sourcePath = $this->text($row->source_path);
 
         return $this->impressionNode(
             impressionId: $impressionId,
-            label: $this->value($row, ['label', 'title', 'name']) ?? basename(str_replace('\\', '/', $sourcePath ?? '')) ?: 'Filesystem impression',
+            label: basename(str_replace('\\', '/', $sourcePath ?? '')) ?: 'Filesystem impression',
             domain: 'filesystem',
             depth: $depth,
             isTerminalDepth: $isTerminalDepth,
             meta: [
-                'kind' => $this->value($row, ['kind', 'memory_kind']),
-                'status' => $this->value($row, ['status', 'process_status']),
-                'observed_at' => $this->value($row, ['observed_at', 'sensemade_at', 'created_at']),
+                'kind' => $this->text($row->kind) ?? $this->text($row->memory_kind),
+                'status' => $this->text($row->process_status),
+                'observed_at' => $row->observed_at === null ? null : (string) $row->observed_at,
                 'source_path' => $sourcePath,
             ],
         );

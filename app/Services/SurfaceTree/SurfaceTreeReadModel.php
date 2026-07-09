@@ -6,7 +6,6 @@ class SurfaceTreeReadModel
 {
     public function __construct(
         private readonly FilesystemTreeTraverser $filesystemTree,
-        private readonly EmailTreeTraverser $emailTree,
         private readonly DomainImpressionsTraverser $domainImpressions,
     ) {}
 
@@ -84,11 +83,8 @@ class SurfaceTreeReadModel
             return $this->filesystemTree->children($nodeKey, $fromDepth, $depthWindow);
         }
 
-        if ($nodeKey === 'domain:email' || str_starts_with($nodeKey, 'sender:email:')) {
-            return $this->emailTree->children($nodeKey, $fromDepth, $depthWindow);
-        }
-
-        if (in_array($nodeKey, ['domain:dreamstate', 'domain:camera_lens'], true)
+        if (in_array($nodeKey, ['domain:email', 'domain:dreamstate', 'domain:camera_lens'], true)
+            || str_starts_with($nodeKey, 'sender:email:')
             || str_starts_with($nodeKey, 'folder:camera_lens:')) {
             return $this->domainImpressions->children($nodeKey, $fromDepth, $depthWindow);
         }

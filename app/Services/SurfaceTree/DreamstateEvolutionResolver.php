@@ -5,7 +5,6 @@ namespace App\Services\SurfaceTree;
 use App\Models\Subconscious\DreamstateCandidate;
 use App\Models\Subconscious\DreamstateReturnPacket;
 use App\Models\Subconscious\DreamstateSensemakerRequest;
-use App\Services\SurfaceTree\Concerns\ReadsEloquentSources;
 use Throwable;
 
 /**
@@ -22,8 +21,6 @@ use Throwable;
  */
 class DreamstateEvolutionResolver
 {
-    use ReadsEloquentSources;
-
     private const STAGE_LABELS = [
         'observed' => 'Not evolved yet',
         'selected' => 'Selected for Dreamstate',
@@ -143,14 +140,9 @@ class DreamstateEvolutionResolver
     private function candidatesByImpression(array $impressionIds): ?array
     {
         try {
-            if (! $this->sourceExists(new DreamstateCandidate)) {
-                return null;
-            }
-
             $rows = DreamstateCandidate::query()
                 ->select(['candidate_id', 'run_id', 'impression_id', 'status'])
                 ->whereIn('impression_id', $impressionIds)
-                ->toBase()
                 ->get();
         } catch (Throwable) {
             return null;
@@ -176,14 +168,9 @@ class DreamstateEvolutionResolver
     private function requestsByImpression(array $impressionIds): ?array
     {
         try {
-            if (! $this->sourceExists(new DreamstateSensemakerRequest)) {
-                return null;
-            }
-
             $rows = DreamstateSensemakerRequest::query()
                 ->select(['request_id', 'run_id', 'impression_id', 'status', 'completed_at'])
                 ->whereIn('impression_id', $impressionIds)
-                ->toBase()
                 ->get();
         } catch (Throwable) {
             return null;
@@ -220,14 +207,9 @@ class DreamstateEvolutionResolver
         }
 
         try {
-            if (! $this->sourceExists(new DreamstateReturnPacket)) {
-                return [];
-            }
-
             $rows = DreamstateReturnPacket::query()
                 ->select(['packet_id', 'run_id', 'status'])
                 ->whereIn('run_id', array_values(array_unique($runIds)))
-                ->toBase()
                 ->get();
         } catch (Throwable) {
             return [];

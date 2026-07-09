@@ -5,7 +5,6 @@ namespace App\Services\SurfaceTree;
 use App\Models\Sidecar\Email;
 use App\Models\Subconscious\DreamstateCandidate;
 use App\Models\Subconscious\DreamstateSensemakerRequest;
-use App\Services\SurfaceTree\Concerns\ReadsEloquentSources;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
@@ -20,14 +19,12 @@ use Throwable;
  *   same Dreamstate run   → Dreamed together
  *   same returned run     → Contributed to the same output
  *
- * Counts come from batched grouped queries (named columns + aggregates) per
- * listing, never per card. Sources that are missing or unreadable simply
- * contribute no groups — the listing itself never breaks.
+ * Counts come from batched grouped model queries (named columns plus a
+ * count aggregate) per listing, never per card. Sources that are missing or
+ * unreadable simply contribute no groups — the listing itself never breaks.
  */
 class DreamstateConnectionsPresenter
 {
-    use ReadsEloquentSources;
-
     private const LABELS = [
         'same_conversation' => 'Part of the same conversation',
         'same_sender' => 'More from this sender',
@@ -37,47 +34,47 @@ class DreamstateConnectionsPresenter
     ];
 
     /**
-     * @param  array<string, mixed>  $rowsById feed rows keyed by impression id
+     * @param  array<string, Model>  $rowsById feed rows keyed by impression id
      * @param  array<string, array<string, mixed>>  $evolutionById evolution meta keyed by impression id
-     * @param  array<string, object|null>  $emailRowsById sidecar email rows keyed by impression id
+     * @param  array<string, Email|null>  $emailsById sidecar email rows keyed by impression id
      * @return array<string, array<string, mixed>> connections meta keyed by impression id
      */
-    public function resolveMany(array $rowsById, array $evolutionById, array $emailRowsById): array
+    public function resolveMany(array $rowsById, array $evolutionById, array $emailsById): array
     {
         if ($rowsById === []) {
             return [];
         }
 
         $sourceCounts = $this->sourcePathCounts($rowsById);
-        $senderCounts = $this->sidecarCounts($this->emailValues($emailRowsById, ['sender', 'from_email']), ['sender', 'from_email']);
-        $threadCounts = $this->sidecarCounts($this->emailValues($emailRowsById, ['thread_id']), ['thread_id']);
+        $senderCounts = $this->sidecarCounts($this->emailValues($emailsById, 'sender'), 'sender');
+        $threadCounts = $this->sidecarCounts($this->emailValues($emailsById, 'thread_id'), 'thread_id');
 
         $runIds = [];
 
         foreach ($evolutionById as $evolution) {
-            $runId = $this->stringValue($evolution['run_id'] ?? null);
+            $runId = $this->text($evolution['run_id'] ?? null);
 
             if ($runId !== null) {
                 $runIds[$runId] = true;
             }
         }
 
-        $requestRunCounts = $this->groupedCounts(new DreamstateSensemakerRequest, 'run_id', array_keys($runIds));
-        $candidateRunCounts = $this->groupedCounts(new DreamstateCandidate, 'run_id', array_keys($runIds));
+        $requestRunCounts = $this->groupedCounts(new DreamstateSensemakerRequest, 'run_id', array_map(strval(...), array_keys($runIds)));
+        $candidateRunCounts = $this->groupedCounts(new DreamstateCandidate, 'run_id', array_map(strval(...), array_keys($runIds)));
 
         $connections = [];
 
         foreach ($rowsById as $impressionId => $row) {
             $evolution = $evolutionById[$impressionId] ?? [];
-            $email = $emailRowsById[$impressionId] ?? null;
-            $runId = $this->stringValue($evolution['run_id'] ?? null);
+            $email = $emailsById[$impressionId] ?? null;
+            $runId = $this->text($evolution['run_id'] ?? null);
 
             $groups = $this->groupList([
-                'same_conversation' => $this->othersCount($threadCounts, $this->emailValue($email, ['thread_id'])),
-                'same_sender' => $this->othersCount($senderCounts, $this->emailValue($email, ['sender', 'from_email'])),
-                'same_source' => $this->othersCount($sourceCounts, $this->stringValue($this->rowValue($row, 'source_path'))),
+                'same_conversation' => $this->othersCount($threadCounts, $this->text($email?->thread_id)),
+                'same_sender' => $this->othersCount($senderCounts, $this->text($email?->sender)),
+                'same_source' => $this->othersCount($sourceCounts, $this->text($row->getAttribute('source_path'))),
                 'dreamed_together' => $this->othersCount($requestRunCounts, $runId),
-                'same_output' => $this->stringValue($evolution['packet_id'] ?? null) !== null
+                'same_output' => $this->text($evolution['packet_id'] ?? null) !== null
                     ? $this->othersCount($candidateRunCounts, $runId)
                     : 0,
             ]);
@@ -129,7 +126,7 @@ class DreamstateConnectionsPresenter
     }
 
     /**
-     * @param  array<string, mixed>  $rowsById
+     * @param  array<string, Model>  $rowsById
      * @return array<string, int> listing rows per source_path
      */
     private function sourcePathCounts(array $rowsById): array
@@ -137,7 +134,7 @@ class DreamstateConnectionsPresenter
         $counts = [];
 
         foreach ($rowsById as $row) {
-            $sourcePath = $this->stringValue($this->rowValue($row, 'source_path'));
+            $sourcePath = $this->text($row->getAttribute('source_path'));
 
             if ($sourcePath !== null) {
                 $counts[$sourcePath] = ($counts[$sourcePath] ?? 0) + 1;
@@ -148,39 +145,19 @@ class DreamstateConnectionsPresenter
     }
 
     /**
-     * Grouped sidecar email counts for the listing's senders or threads. The
-     * first of the candidate columns that exists on the sidecar source is
-     * grouped on; a missing source or column yields no counts.
+     * Grouped sidecar email counts for the listing's senders or threads,
+     * over the known emails columns.
      *
      * @param  list<string>  $values
-     * @param  list<string>  $candidateColumns
      * @return array<string, int>
      */
-    private function sidecarCounts(array $values, array $candidateColumns): array
+    private function sidecarCounts(array $values, string $column): array
     {
         if ($values === []) {
             return [];
         }
 
         try {
-            if (! $this->sourceExists(new Email)) {
-                return [];
-            }
-
-            $available = $this->columns(Email::class);
-            $column = null;
-
-            foreach ($candidateColumns as $candidate) {
-                if (in_array($candidate, $available, true)) {
-                    $column = $candidate;
-                    break;
-                }
-            }
-
-            if ($column === null) {
-                return [];
-            }
-
             return $this->countRows(Email::query()
                 ->toBase()
                 ->select($column)
@@ -205,10 +182,6 @@ class DreamstateConnectionsPresenter
         }
 
         try {
-            if (! $this->sourceExists($model)) {
-                return [];
-            }
-
             return $this->countRows($model->newQuery()
                 ->toBase()
                 ->select($column)
@@ -231,7 +204,7 @@ class DreamstateConnectionsPresenter
         $counts = [];
 
         foreach ($rows as $row) {
-            $key = $this->stringValue($row->{$column} ?? null);
+            $key = $this->text($row->{$column} ?? null);
 
             if ($key !== null) {
                 $counts[$key] = (int) ($row->connection_count ?? 0);
@@ -242,16 +215,15 @@ class DreamstateConnectionsPresenter
     }
 
     /**
-     * @param  array<string, object|null>  $emailRowsById
-     * @param  list<string>  $columns
+     * @param  array<string, Email|null>  $emailsById
      * @return list<string>
      */
-    private function emailValues(array $emailRowsById, array $columns): array
+    private function emailValues(array $emailsById, string $column): array
     {
         $values = [];
 
-        foreach ($emailRowsById as $email) {
-            $value = $this->emailValue($email, $columns);
+        foreach ($emailsById as $email) {
+            $value = $this->text($email?->getAttribute($column));
 
             if ($value !== null) {
                 $values[$value] = true;
@@ -261,40 +233,7 @@ class DreamstateConnectionsPresenter
         return array_map(strval(...), array_keys($values));
     }
 
-    /**
-     * @param  list<string>  $columns
-     */
-    private function emailValue(?object $email, array $columns): ?string
-    {
-        if ($email === null) {
-            return null;
-        }
-
-        foreach ($columns as $column) {
-            $value = $this->stringValue($email->{$column} ?? null);
-
-            if ($value !== null) {
-                return $value;
-            }
-        }
-
-        return null;
-    }
-
-    private function rowValue(mixed $row, string $key): mixed
-    {
-        if ($row instanceof Model) {
-            return $row->getAttribute($key);
-        }
-
-        if (is_array($row)) {
-            return $row[$key] ?? null;
-        }
-
-        return is_object($row) && property_exists($row, $key) ? $row->{$key} : null;
-    }
-
-    private function stringValue(mixed $value): ?string
+    private function text(mixed $value): ?string
     {
         if ($value === null || $value === '' || is_resource($value)) {
             return null;
