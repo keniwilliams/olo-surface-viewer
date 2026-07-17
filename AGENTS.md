@@ -2,6 +2,14 @@
 
 Keep the codebase within plain Laravel boundaries. Do not invent dynamic framework layers inside Laravel.
 
+### Framework Primitives First
+
+Before writing custom logic, check whether Laravel already provides it: helpers (`str()`, `Arr::`, `Number::`, `now()`, etc.), Facades (`Context`, `Process`, `Bus`, `Concurrency`, `Cache`, `Http`), built-in Middleware, validation rules, collection methods, and Artisan primitives.
+
+Do not roll out a custom implementation of something Laravel already ships, unless the built-in version genuinely cannot do the job, and that gap is stated explicitly.
+
+This applies across every section below: Middleware, Process, Context, Bus, and collection/helper usage are not optional conventions, they are the default until proven insufficient for the specific case.
+
 ### Controllers
 
 Controllers are request coordinators only.
@@ -237,6 +245,88 @@ As a warning sign, review any class that has:
 * repeated private helper chains
 * mixed read/write responsibilities
 * logic that can be named more clearly as a model scope, accessor, cast, policy, job, listener, or API Resource
+
+### Collections
+
+Prefer Laravel Collections (`collect()`, Eloquent collections, `LazyCollection` for large sets) over hand-rolled array loops for filtering, mapping, grouping, reducing, or transforming data.
+
+Do not write manual `foreach` loops building up arrays when a collection method (`map`, `filter`, `groupBy`, `pluck`, `reduce`, `each`, `chunk`, etc.) already expresses the same operation.
+
+Use `LazyCollection` for large datasets or streaming reads (e.g. large CLI output, large query results) instead of loading everything into memory and iterating manually.
+
+This is the same Framework Primitives First rule applied specifically to data transformation: a custom loop is only justified when a collection method genuinely cannot express the operation, and that gap is stated explicitly.
+
+### Middleware
+
+Middleware handles request-level, cross-cutting concerns that must run before a request reaches a Controller: authentication checks, rate limiting, CORS, locale detection, maintenance mode, request/response header manipulation.
+
+Use Laravel's built-in middleware and standard registration (route middleware, middleware groups, `handle()`) for this. Do not reimplement what Laravel already provides as raw PHP inline in a Controller — for example, manually checking headers, tokens, or throttling counters at the top of a Controller method instead of using or writing Middleware.
+
+If the same request-level check is being written or copy-pasted into more than one Controller, it belongs in Middleware, not in the Controllers.
+
+Middleware must not:
+
+* contain business logic
+* make model-specific or single-resource authorization decisions (that's a Policy/Gate, called from the Controller)
+* perform validation of request body content (that's a Form Request)
+* query multiple models or orchestrate domain logic
+
+Middleware's job stops at deciding whether the request should reach the application at all, or at transforming the request/response envelope. Anything past that boundary is a Controller/Policy/Form Request concern.
+
+### External CLI Processes
+
+Some work requires shelling out to an external CLI (build tools, AI agent CLIs, data processors, etc.) rather than calling an API directly.
+
+Use the Laravel `Process` facade as the only invocation point. Do not use `shell_exec`, `exec`, `proc_open`, or Symfony Process directly.
+
+Structure:
+
+* **Command** — the CLI entry point when the invocation is user- or schedule-triggered.
+* **Job** — the actual `Process::run()` call. External CLI calls are treated as async by default: they may run for seconds to minutes, so they belong in a queued Job, not inline in a Controller or Command action.
+* **Repository** — only if the CLI's output needs to be persisted and queried later (e.g. session state, run history). Follows the same justification rule as any other Repository: not created for a single trivial read/write.
+* **Event** — if the CLI's completion needs to trigger downstream side effects, fire an Event from the Job rather than chaining logic inline.
+
+Parsing CLI output:
+
+* Parse structured output (JSON, etc.) into a typed DTO or pass it directly to a Repository method.
+* Do not build a generic adapter that guesses at output shape. This is the same violation as a Mixed-Shape Adapter applied to CLI output instead of a database row.
+* If the CLI's output format is unstructured text, isolate the parsing in one method on the Job or a dedicated parser class, not spread across callers.
+
+Concurrency and working directory:
+
+* If multiple invocations of the same CLI can run in parallel against the same repository or filesystem state, isolate each invocation's working directory. Do not let concurrent Jobs share mutable working state.
+* Concurrency limits are a queue-level concern (queue worker limits, not application code).
+
+Do not:
+
+* call an external CLI synchronously from a Controller action
+* invoke the CLI through anything other than the `Process` facade
+* build a mixed-shape adapter to normalize CLI output
+* let a Job assume exclusive access to shared working directory state without isolating it
+
+### AI Agent Orchestration
+
+Use `laravel/ai` (or equivalent first-party AI package) for calling AI provider APIs directly. This is distinct from External CLI Processes above — no CLI binary, no `Process` facade, no CLI output parsing.
+
+Structure:
+
+* **Job** — a single agent invocation. One Job per agent call, same as any other async unit of work.
+* **Parallel agents** — two distinct cases:
+  * Results needed back within the current process before continuing (e.g. fan out to several agents, merge results, then proceed) → `Concurrency::run()`. Runs closures in parallel and blocks until all return.
+  * Independent background work, no blocking wait needed → `Bus::batch()` of agent Jobs, handled via batch completion callbacks.
+  * Do not hand-roll parallel execution with manual process/thread management in either case.
+* **Sequential agents** — Job chains (`->chain()`), where one agent's output feeds the next Job's input. Do not chain agent calls synchronously inside a single Job.
+* **Repository** — agent state or session persistence, same justification rule as any other Repository.
+* **Service** — cross-agent coordination logic: deciding which agents run in what order, merging or routing results across a batch or chain. This is a legitimate Service use case under the existing Services rule, extended to front Jobs/Batches instead of Repositories. Do not put orchestration logic in a Job itself; a Job executes one agent call, a Service decides the shape of the orchestration.
+* **Tool definitions** — one class per tool the agent can call. Do not inline tool logic into the agent call site.
+* **Cross-job/agent shared data** (trace IDs, session IDs, orchestration metadata) — use the `Context` facade, not custom constructor arguments or manual payload threading. Context set before a batch or chain is dispatched is automatically captured and rehydrated into each Job, including across the queue boundary. Do not manually pass tracing/correlation data through Job constructors when Context already carries it.
+
+Do not:
+
+* orchestrate multiple agents via `Process` calls to a CLI binary when a direct API call via `laravel/ai` is available
+* build custom parallel/sequential execution logic when `Bus::batch()` or Job chains already provide it
+* thread trace/correlation/session data manually through Job constructors or payloads when `Context` already propagates it across the queue boundary
+* parse agent output with a mixed-shape adapter instead of the package's typed response objects
 
 ### Enforcement
 
